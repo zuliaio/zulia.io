@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<!--
+	Forty by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+
+<head>
+	<title>Zulia</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<!--[if lte IE 8]><script src="/assets/js/ie/html5shiv.js"></script><![endif]-->
+	<link rel="stylesheet" href="/assets/css/main.css" />
+	<!--[if lte IE 9]><link rel="stylesheet" href="/assets/css/ie9.css" /><![endif]-->
+	<!--[if lte IE 8]><link rel="stylesheet" href="/assets/css/ie8.css" /><![endif]-->
+</head>
+
+
+<body>
+
+    <!-- Wrapper -->
+<div id="wrapper">
+
+<!-- Header -->
+<header id="header">
+	<a href="http://localhost:4000//" class="logo"><strong>Zulia</strong> <span></span></a>
+	<nav>
+		<a href="#menu">Menu</a>
+	</nav>
+</header>
+
+<!-- Menu -->
+<nav id="menu">
+	<ul class="links">
+        
+		    
+		        <li><a href="http://localhost:4000//">Home</a></li>
+	    	
+		
+		    
+		
+		
+		    
+		
+		    
+		
+	</ul>
+	<ul class="actions vertical">
+		<li><a href="#" class="button special fit">Get Started</a></li>
+		<!--<li><a href="#" class="button fit">Log In</a></li>-->
+	</ul>
+</nav>
+ 
+    
+    
+<!-- Main -->
+<div id="main" class="alt">
+
+<!-- One -->
+<section id="one">
+	<div class="inner">
+		<header class="major">
+			<h1>Install</h1>
+		</header>
+		<span class="image main"><img src="/assets/images/install.jpg" alt="" /></span>
+		<p><h2 id="check-out-the-code">Check out the code</h2>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>git clone git@github.com:zuliaio/zuliasearch.git
+</code></pre></div></div>
+
+<h2 id="build-and-copy-distro">Build and copy distro</h2>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>zuliasearch
+./gradlew
+cp ~/zuliasearch/zulia-server/build/distributions/zulia-1.0-SNAPSHOT.tar ~/
+<span class="nb">cd</span> ~/
+<span class="nb">tar </span>zxvf zulia-1.0-SNAPSHOT.tar
+rm zulia-1.0-SNAPSHOT.tar
+</code></pre></div></div>
+
+<h2 id="add-node-and-start">Add node and start</h2>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="nb">cd </span>zulia-1.0-SNAPSHOT/bin
+./zuliad <span class="nt">--config</span> ../config/zulia.properties addNode
+./zuliad <span class="nt">--config</span> ../config/zulia.properties start
+</code></pre></div></div>
+
+<h1 id="systemd-script-and-future-maintenance">systemd script and future maintenance</h1>
+<h2 id="create-systemd-and-environment-file-script">Create systemd and environment file script</h2>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>nano /etc/default/zulia
+
+<span class="nv">ZULIAD_OPTS</span><span class="o">=</span><span class="s2">"-Xmx15g"</span>
+
+<span class="c"># save and exit</span>
+
+nano /etc/systemd/system/zuliad.service
+
+<span class="o">[</span>Unit]
+<span class="nv">Description</span><span class="o">=</span>Zulia
+<span class="nv">After</span><span class="o">=</span>syslog.target network.target remote-fs.target nss-lookup.target
+
+<span class="o">[</span>Service]
+<span class="nv">Type</span><span class="o">=</span>simple
+<span class="nv">WorkingDirectory</span><span class="o">=</span>/home/search/zuliasearch/
+<span class="nv">ExecStart</span><span class="o">=</span>/home/<span class="nv">$USER</span>/zulia/bin/zuliad start
+<span class="nv">Restart</span><span class="o">=</span>on-failure
+<span class="nv">User</span><span class="o">=</span><span class="nv">$USER</span>
+<span class="nv">EnvironmentFile</span><span class="o">=</span>/etc/default/zulia
+
+<span class="o">[</span>Install]
+<span class="nv">WantedBy</span><span class="o">=</span>multi-user.target
+
+<span class="c"># save and exit</span>
+
+<span class="nb">sudo </span>systemctl daemon-reload
+<span class="nb">sudo </span>systemctl <span class="nb">enable </span>zuliad.service
+
+</code></pre></div></div>
+
+<h2 id="create-a-symlink-to-be-used-by-script-below">Create a symlink (to be used by script below)</h2>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code>ln <span class="nt">-s</span> zulia-1.0-SNAPSHOT zulia
+</code></pre></div></div>
+
+<h2 id="building-and-restarting">Building and restarting</h2>
+<p>Assuming that you have checked out the repo in ‘zuliasearch’ directory, the following helper script would pull any new changes, build and restart zulia.</p>
+
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">#!/bin/bash</span>
+<span class="nb">cd</span> ~/zuliasearch <span class="o">&amp;&amp;</span> git pull <span class="o">&amp;&amp;</span> cp ~/zulia/config/zulia.properties ~/ <span class="o">&amp;&amp;</span> ./gradlew <span class="nt">-x</span> <span class="nb">test</span> <span class="o">&amp;&amp;</span> cp ~/zuliasearch/zulia-server/build/distributions/zulia-1.0-SNAPSHOT.tar ~/ <span class="o">&amp;&amp;</span> rm <span class="nt">-rf</span> ~/zulia-1.0-SNAPSHOT <span class="o">&amp;&amp;</span> <span class="nb">cd</span> ~/ <span class="o">&amp;&amp;</span> <span class="nb">tar</span> <span class="nt">-xvf</span> zulia-1.0-SNAPSHOT.tar <span class="o">&amp;&amp;</span> rm zulia-1.0-SNAPSHOT.tar <span class="o">&amp;&amp;</span> cp ~/zulia.properties ~/zulia/config/zulia.properties <span class="o">&amp;&amp;</span> rm <span class="nt">-f</span> ~/zulia.properties <span class="o">&amp;&amp;</span> <span class="nb">sudo </span>systemctl restart zuliad
+</code></pre></div></div>
+</p>
+	</div>
+</section>
+
+</div>
+
+    <!-- Contact -->
+<section id="contact">
+	<div class="inner">
+		<section>
+			<form action="https://formspree.io/inquiry@ascend-tech.us" method="POST">
+				<div class="field half first">
+					<label for="name">Name</label>
+					<input type="text" name="name" id="name" />
+				</div>
+				<div class="field half">
+					<label for="email">Email</label>
+					<input type="text" name="_replyto" id="email" />
+				</div>
+				<div class="field">
+					<label for="message">Message</label>
+					<textarea name="message" id="message" rows="6"></textarea>
+				</div>
+				<ul class="actions">
+					<li><input type="submit" value="Send Message" class="special" /></li>
+					<li><input type="reset" value="Clear" /></li>
+				</ul>
+			</form>
+		</section>
+		<section class="split">
+			<section>
+				<div class="contact-method">
+					<span class="icon alt fa-envelope"></span>
+					<h3>Email</h3>
+					<a href="#">inquiry@ascend-tech.us</a>
+				</div>
+			</section>
+			<!--
+			<section>
+				<div class="contact-method">
+					<span class="icon alt fa-phone"></span>
+					<h3>Phone</h3>
+					<span></span>
+				</div>
+			</section>
+			-->
+			<section>
+				<div class="contact-method">
+					<span class="icon alt fa-home"></span>
+					<h3>Address</h3>
+					<span>
+					
+					
+					
+					    Maryland 
+					
+					
+					
+					    USA
+					
+					</span>
+				</div>
+			</section>
+		</section>
+	</div>
+</section>
+
+<!-- Footer -->
+	<footer id="footer">
+		<div class="inner">
+			<ul class="icons">
+				
+				<li><a href="https://twitter.com/zulia" class="icon alt fa-twitter" target="_blank"><span class="label">Twitter</span></a></li>
+				
+				
+				
+				
+				
+				
+				
+				
+				<li><a href="https://github.com/zuliaio/zuliasearch" class="icon alt fa-github" target="_blank"><span class="label">GitHub</span></a></li>
+				
+				
+				
+			</ul>
+			<ul class="copyright">
+				<li>&copy; Zulia </li>
+				<li>Backed By: <a href="http://www.ascend-tech.us" target="_blank">Ascendant Software Technology, LLC</a></li>
+				<!--<li>Design: <a href="https://html5up.net" target="_blank">HTML5 UP</a></li>
+				<li>Jekyll integration: <a href="http://andrewbanchi.ch" target="_blank">Andrew Banchich</a></li>-->
+
+			</ul>
+		</div>
+	</footer>
+
+</div>
+
+<!-- Scripts -->
+	<script src="http://localhost:4000/assets/js/jquery.min.js"></script>
+	<script src="http://localhost:4000/assets/js/jquery.scrolly.min.js"></script>
+	<script src="http://localhost:4000/assets/js/jquery.scrollex.min.js"></script>
+	<script src="http://localhost:4000/assets/js/skel.min.js"></script>
+	<script src="http://localhost:4000/assets/js/util.js"></script>
+	<!--[if lte IE 8]><script src="http://localhost:4000/assets/js/ie/respond.min.js"></script><![endif]-->
+	<script src="http://localhost:4000/assets/js/main.js"></script>
+
+
+</body>
+
+</html>
