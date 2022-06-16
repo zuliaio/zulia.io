@@ -4,7 +4,7 @@ subtitle:
 email: inquiry@ascend-tech.us
 description: Replicated Distributed Lucene with deep object searching.
 baseurl:  # the subpath of your site, e.g. /blog
-url: http://zulia.io # the base hostname & protocol for your site
+url: https://zulia.io # the base hostname & protocol for your site
 author:
 street_address: 
 city: 
@@ -15,19 +15,18 @@ phone:
 
 # homepage tiles
 tiles-source: posts # accepts "posts" or "pages"
-tiles-count: 5
+tiles-count: 6
 
 # social settings
-500px_url:
-facebook_url:
-github_url: https://github.com/zuliaio/zuliasearch
-gitlab_url: 
-googleplus_url: 
-instagram_url: 
-linkedin_url: 
-pinterest_url:
-slack_url:
-twitter_url: https://twitter.com/zulia
+socials:
+  GitHub: https://github.com/zuliaio/zuliasearch
+  GitLab:
+  Google-Plus:
+  Instagram:
+  LinkedIn: https://www.linkedin.com/company/ascendant-software-technology-llc/
+  Twitter: https://twitter.com/zulia
+  Facebook:
+  Slack:
 
 # build settings
 markdown: kramdown
