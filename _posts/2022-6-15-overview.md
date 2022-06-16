@@ -14,11 +14,15 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * Realtime
 * Distributed
 * Pure Java
-* Open Source
+* [Open Source](https://github.com/zuliaio/zuliasearch)
 
 ### Zulia supports:
-* Sorting
-* Faceting
 * Searching multiple indexes with a single query
 * Storing associated files with the documents (images, pdfs, ...)
+* Sorting
+* Faceting
+* Vector Search
+* Rich Query Syntax
+
+
 
