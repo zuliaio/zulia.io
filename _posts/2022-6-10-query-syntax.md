@@ -49,6 +49,17 @@ The following are some examples of field-prefixed clauses:
 
 ## Boolean operators and grouping
 
+The default operator can be set on a query and defaults to OR.  Any terms or clauses that are not joined with an explicit boolean operator are joined with the default.
+
+NOTE: The boolean operators in Lucene do not use the normal precedence rules without so parentheses so please use parentheses when using multiple boolean operators.
+
+* `Spain Germany`
+   * with Default Operator OR --> `Spain OR Germany`
+   * with Default Operator AND --> `Spain AND Germany`
+* `title:(news entertainment)`
+  * with Default Operator OR --> `title:(news OR entertainment)`
+  * with Default Operator AND --> `title:(news AND entertainment)` 
+
 You can combine clauses using Boolean AND, OR and NOT operators to form more complex expressions, for example:
 
 * `test AND results`
@@ -60,6 +71,13 @@ You can combine clauses using Boolean AND, OR and NOT operators to form more com
 * `title:test AND NOT title:complete`
   * selects documents containing test and not containing complete in the title field.
 
+* `title:test AND -title:complete`
+  * same as above with alternate syntax
+  * *-* indicates NOT
+
+* `title:(-apple orange)`
+  * selects document with title without the word apple but with the word orange
+
 * `title:test AND (pass* OR fail*)`
   * grouping; use parentheses to specify the precedence of terms in a Boolean clause. Query will match documents containing test in the title field and a word starting with pass or fail in the default search fields.
 
@@ -67,10 +85,14 @@ You can combine clauses using Boolean AND, OR and NOT operators to form more com
   * if the default operator for the query is OR (default), documents containing any of *pass*, *fail* or *skip* in the title field.
   * if the default operator for the query is AND, documents containing all of *pass*, *fail* or *skip* in the title field.
 
-* `title:(+test +"result unknown")`
+* `title:(+test +result unknown)`
   * *+* indicates or phrase is required 
   * if the default operator for the query is OR (default), documents containing both *test* and *result* in the title field.  The *unknown* term will be used for scoring
   * if the default operator for the query is AND, the + for required does not change the query and gives documents containing both *test*, *result*, and *unknown* in the title field.
+
+
+
+
 
 Note the Boolean operators must be written in all caps, otherwise they are parsed as regular terms.
 
@@ -115,6 +137,17 @@ Terms, quoted terms, term range expressions and grouped clauses can have a float
   * apply the boost to a sub-query.
 
 
+# Special character escaping
+Most search terms can be put in double quotes making special-character escaping not necessary. If the search term contains the quote character (or cannot be quoted for some reason), any character can be quoted with a backslash. For example:
+
+```
+\:\(quoted\+term\)\:
+```
+a single search term (quoted+term): with escape sequences. An alternative quoted form would be simpler:
+```
+":(quoted+term):"
+```
+
 ## Minimum-should-match constraint for Boolean disjunction groups
 A minimum-should-match operator can be applied to a disjunction Boolean query (a query with only "OR"-subclauses) and forces the query to match documents with at least the provided number of these subclauses. For example:
 
@@ -140,5 +173,4 @@ Interval functions are a powerful tool to express search needs in terms of one o
   * matches all documents in the title or abstract field where at least two of the three terms (quick, brown and fox) occur within five positions of each other.
 
 Please refer to the [interval functions package](https://lucene.apache.org/core/9_1_0/queryparser/org/apache/lucene/queryparser/flexible/standard/nodes/intervalfn/package-summary.html) for more information on which functions are available and how they work.
-
 
