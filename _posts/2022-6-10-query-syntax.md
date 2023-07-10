@@ -54,11 +54,11 @@ The default operator can be set on a query and defaults to OR.  Any terms or cla
 NOTE: The boolean operators in Lucene do not use the normal precedence rules without so parentheses so please use parentheses when using multiple boolean operators.
 
 * `Spain Germany`
-   * with Default Operator OR --> `Spain OR Germany`
-   * with Default Operator AND --> `Spain AND Germany`
+  * with Default Operator OR --> `Spain OR Germany`
+  * with Default Operator AND --> `Spain AND Germany`
 * `title:(news entertainment)`
   * with Default Operator OR --> `title:(news OR entertainment)`
-  * with Default Operator AND --> `title:(news AND entertainment)` 
+  * with Default Operator AND --> `title:(news AND entertainment)`
 
 You can combine clauses using Boolean AND, OR and NOT operators to form more complex expressions, for example:
 
@@ -86,7 +86,7 @@ You can combine clauses using Boolean AND, OR and NOT operators to form more com
   * if the default operator for the query is AND, documents containing all of *pass*, *fail* or *skip* in the title field.
 
 * `title:(+test +result unknown)`
-  * *+* indicates or phrase is required 
+  * *+* indicates or phrase is required
   * if the default operator for the query is OR (default), documents containing both *test* and *result* in the title field.  The *unknown* term will be used for scoring
   * if the default operator for the query is AND, the + for required does not change the query and gives documents containing both *test*, *result*, and *unknown* in the title field.
 
@@ -111,7 +111,7 @@ To search for ranges of textual or numeric values, use square or curly brackets,
 
 * `pubDate:[2022-01-01 TO 2022-02-01]`
   * Date range example (defaults to start of day)
-  
+
 * `pubDate:[2021-06-21T05:00:00.00Z TO 2021-12-12T08:10:00.00Z]`
   * Date range example with timestamp
 
@@ -125,7 +125,7 @@ Zulia indexes string fields with character length information of the input strin
 * `|||authors|||:4`
   * finds documents where authors list contains four items, i.e. *authors: ["Tom","Sally","Bob", "Jen]*
 
-* 
+*
 
 ## Term boosting
 Terms, quoted terms, term range expressions and grouped clauses can have a floating-point weight boost applied to them to increase their score relative to other clauses. For example:
@@ -153,7 +153,7 @@ A minimum-should-match operator can be applied to a disjunction Boolean query (a
 
 A minimum should match can be set on the query which is equivalent to wrapping the entire query in a minimum should match.
 
-* `(blue crab fish)@2` 
+* `(blue crab fish)@2`
   * matches all documents with at least two terms from the set [blue, crab, fish] (in any order).
   *  also can be written as `(blue crab fish)~2`
 
@@ -172,5 +172,34 @@ Interval functions are a powerful tool to express search needs in terms of one o
 * `title,abstract:fn:maxwidth(5 fn:atLeast(2 quick brown fox))`
   * matches all documents in the title or abstract field where at least two of the three terms (quick, brown and fox) occur within five positions of each other.
 
+* Fields indexed with the name `fn` (not recommended) can be searched by setting fn as one of the default search fields but not by simply prefixing the query with the field name.  To use prefix a term or term grouping, use the multi field syntax with a blank additional field like `fn,:someTerm`.
+
 Please refer to the [interval functions package](https://lucene.apache.org/core/9_1_0/queryparser/org/apache/lucene/queryparser/flexible/standard/nodes/intervalfn/package-summary.html) for more information on which functions are available and how they work.
+
+
+# Zulia specific query syntax
+
+
+## Numeric Set
+Numeric set queries are more efficient for sets of numbers than a standard filter or scored query. They work on integer, long, float, and double fields.
+They can be done as a separate query since 2.7.0 (NumericSetQuery in Java) and inline with a query using the syntax below since 3.4.1.
+* `intField:zl:ns(10 4 25)`
+  * searches intField for documents containing any of the numbers 4,10,25
+* `intField1,intField2:zl:ns(10 4 25)`
+  * searches both intField1 and intField2 for documents containing any of the numbers 4,10,25
+* `zl:ns(1 2 3 4)`
+  * searches the default search fields for documents containing any of the numbers 4,10,25 (all default search fields must be numeric)
+
+
+## Terms In Set Query
+Term in set queries are a more efficient way to search a set of terms as they appear in the search index (tokenized and filtered for non keyword analyzers). If a keyword analyzer is used terms will be case-sensitive and need to be a complete match.  
+They can be done as a separate query since 1.7.35 (TermQuery in Java) and inline with a query using the syntax below since 3.4.1.
+
+* `id:zl:tq(abc 123 xyz rrr)`
+  * searches field id for analyzed terms abc, xyz, or rrr.  If id field was analyzed as lower case keyword this would match ids ABC or Xyz.
+* `mainTopic,subTopic:zl:tq("Lung Cancer" "Brain Cancer" Diabetes)`
+  * searches field mainTopic and subTopic for terms "Lung Cancer" "Brain Cancer" Diabetes, returning documents if either field matched any term.  In this case topics and subTopics are assumed to be keyword fields.
+
+## Notes
+* Fields indexed with the name `zl` (not recommended) can be searched by setting zl as one of the default search fields but not by simply prefixing the query with the field name.  To use prefix a term or term grouping, use the multi field syntax with a blank additional field like `zl,:someTerm`.
 
