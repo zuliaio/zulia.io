@@ -110,10 +110,39 @@ To search for ranges of textual or numeric values, use square or curly brackets,
   * one-sided range; selects documents whose score field is larger than 2.5.
 
 * `pubDate:[2022-01-01 TO 2022-02-01]`
-  * Date range example (defaults to start of day)
+  * Date range example
 
-* `pubDate:[2021-06-21T05:00:00.00Z TO 2021-12-12T08:10:00.00Z]`
+* `pubDate:[2021-06-21T05:00:00.000Z TO 2021-12-12T08:10:00.000Z]`
   * Date range example with timestamp
+
+
+## Dates
+Dates can be represented the following formats:
+* `yyyy`
+  * ex. 2021
+* `yyyyy-MM` or `yyyy/MM`
+  * ex. 2020-05 or 2020/05
+* `yyyy-MM-dd` or `yyyy/MM/dd`
+  * ex. 2004-04-01 or 2004/04/01
+* `yyyy-MM-ddTHH:mm:ss.SSSZ` or `yyyy/MM/ddTHH:mm:ss.SSSZ`
+  * ex. 2012-08-03T11:59:00.000Z or 2012/08/03T11:59:00.000Z
+
+Range query dates with / do not special handling, but otherwise they need to be quoted or escaped
+* ex:
+  * `date:"2012/02/01"`
+  * `date:[2012/02/02 TO 2023/03/04]`
+
+Sample queries
+* `date:2022-04`
+  * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-04-30T23:59:59.999Z]
+* `date:2022-04-02`
+  * equivalent to date:[2022-04-02T00:00:00.000Z TO 2022-04-02T23:59:59.999Z]
+* `date:[2022-04 TO 2022-05]`
+  * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-05-31T23:59:59.999Z]
+* `date:[2022-04 TO 2022-05}`
+  * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-05-01T00:00:00.000Z}
+* `date:{2022-04 TO 2022-05}`
+  * equivalent to date:{2022-04-01T23:59:59.999Z TO 2022-05-01T00:00:00.000Z}
 
 ## Length Operations
 
