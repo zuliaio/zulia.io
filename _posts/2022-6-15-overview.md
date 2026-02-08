@@ -32,6 +32,7 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * [Java Client]({% post_url 2022-6-13-java %})
 * [Rest Service]({% post_url 2022-6-12-rest %})
 * [Query Syntax]({% post_url 2022-6-10-query-syntax %})
+* [Testing]({% post_url 2022-6-9-testing %})
 
 
 ### Requirements
