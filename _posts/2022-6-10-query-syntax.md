@@ -54,8 +54,8 @@ The default operator can be set on a query and defaults to OR.  Any terms or cla
 NOTE: The boolean operators in Lucene do not use the normal precedence rules without so parentheses so please use parentheses when using multiple boolean operators.
 
 * `Spain Germany`
-  * with Default Operator OR --> `Spain OR Germany`
-  * with Default Operator AND --> `Spain AND Germany`
+   * with Default Operator OR --> `Spain OR Germany`
+   * with Default Operator AND --> `Spain AND Germany`
 * `title:(news entertainment)`
   * with Default Operator OR --> `title:(news OR entertainment)`
   * with Default Operator AND --> `title:(news AND entertainment)`
@@ -109,6 +109,9 @@ To search for ranges of textual or numeric values, use square or curly brackets,
 * `score:{2.5 TO *]`
   * one-sided range; selects documents whose score field is larger than 2.5.
 
+* `score>3.0 AND score<=5.0`
+   * alternative syntax for ranges; select document whose score is greater 3.0 and less than or equal to 5.0
+
 * `pubDate:[2022-01-01 TO 2022-02-01]`
   * Date range example
 
@@ -118,14 +121,14 @@ To search for ranges of textual or numeric values, use square or curly brackets,
 
 ## Dates
 Dates can be represented the following formats:
-* `yyyy`
-  * ex. 2021
-* `yyyyy-MM` or `yyyy/MM`
-  * ex. 2020-05 or 2020/05
-* `yyyy-MM-dd` or `yyyy/MM/dd`
-  * ex. 2004-04-01 or 2004/04/01
-* `yyyy-MM-ddTHH:mm:ss.SSSZ` or `yyyy/MM/ddTHH:mm:ss.SSSZ`
-  * ex. 2012-08-03T11:59:00.000Z or 2012/08/03T11:59:00.000Z
+  * `yyyy`
+    * ex. 2021
+  * `yyyyy-MM` or `yyyy/MM`
+    * ex. 2020-05 or 2020/05
+  * `yyyy-MM-dd` or `yyyy/MM/dd`
+    * ex. 2004-04-01 or 2004/04/01
+  * `yyyy-MM-ddTHH:mm:ss.SSSZ` or `yyyy/MM/ddTHH:mm:ss.SSSZ`
+    * ex. 2012-08-03T11:59:00.000Z or 2012/08/03T11:59:00.000Z
 
 Range query dates with / do not special handling, but otherwise they need to be quoted or escaped
 * ex:
@@ -133,12 +136,12 @@ Range query dates with / do not special handling, but otherwise they need to be 
   * `date:[2012/02/02 TO 2023/03/04]`
 
 Sample queries
-* `date:2022-04`
-  * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-04-30T23:59:59.999Z]
-* `date:2022-04-02`
-  * equivalent to date:[2022-04-02T00:00:00.000Z TO 2022-04-02T23:59:59.999Z]
-* `date:[2022-04 TO 2022-05]`
-  * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-05-31T23:59:59.999Z]
+ * `date:2022-04`
+    * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-04-30T23:59:59.999Z]
+ * `date:2022-04-02`
+   * equivalent to date:[2022-04-02T00:00:00.000Z TO 2022-04-02T23:59:59.999Z]
+ * `date:[2022-04 TO 2022-05]`
+   * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-05-31T23:59:59.999Z]
 * `date:[2022-04 TO 2022-05}`
   * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-05-01T00:00:00.000Z}
 * `date:{2022-04 TO 2022-05}`
@@ -221,7 +224,7 @@ They can be done as a separate query since 2.7.0 (NumericSetQuery in Java) and i
 
 
 ## Terms In Set Query
-Term in set queries are a more efficient way to search a set of terms as they appear in the search index (tokenized and filtered for non keyword analyzers). If a keyword analyzer is used terms will be case-sensitive and need to be a complete match.  
+Term in set queries are a more efficient way to search a set of terms as they appear in the search index (tokenized and filtered for non keyword analyzers). If a keyword analyzer is used terms will be case-sensitive and need to be a complete match.
 They can be done as a separate query since 1.7.35 (TermQuery in Java) and inline with a query using the syntax below since 3.4.1.
 
 * `id:zl:tq(abc 123 xyz rrr)`
@@ -231,4 +234,44 @@ They can be done as a separate query since 1.7.35 (TermQuery in Java) and inline
 
 ## Notes
 * Fields indexed with the name `zl` (not recommended) can be searched by setting zl as one of the default search fields but not by simply prefixing the query with the field name.  To use prefix a term or term grouping, use the multi field syntax with a blank additional field like `zl,:someTerm`.
+
+
+# Score Functions
+
+Score functions allow you to modify the relevance score of matching documents using mathematical expressions. This is useful for incorporating document-level signals like popularity, recency, or quality ratings into the ranking.
+
+## Available Variables
+
+* `zuliaScore` - The baseline Lucene text relevance score (BM25 by default)
+* Any numeric or date field that is configured with `.sort()` in the index config
+
+Supported field types for score function variables: `NUMERIC_INT`, `NUMERIC_LONG`, `NUMERIC_FLOAT`, `NUMERIC_DOUBLE`, `DATE`
+
+## Available Functions
+
+Standard arithmetic operators (`+`, `-`, `*`, `/`, `%`) and the following math functions:
+
+* `sqrt(x)` - Square root
+* `ln(x)` - Natural logarithm
+* `log(x)` - Logarithm base 10
+* `abs(x)` - Absolute value
+* `max(a, b)` - Maximum of two values
+* `min(a, b)` - Minimum of two values
+* `pow(a, b)` - Power (a raised to the power b)
+
+## Examples
+
+* `zuliaScore * 2` - Double the text relevance score
+* `zuliaScore * popularity` - Multiply text relevance by a popularity field
+* `zuliaScore * (1 + ln(pageRank))` - Incorporate a PageRank-like signal with logarithmic dampening
+* `zuliaScore * max(boost, 2)` - Use a boost field with a minimum value of 2
+* `zuliaScore * (sqrt(popularity) + pageRank)` - Combine multiple fields
+* `zuliaScore / (1 + popularity)` - Invert ranking (favor low popularity)
+* `publishDate` - Rank purely by date (epoch milliseconds, most recent first)
+
+## Notes
+* Fields referenced in a score function must be configured as sortable numeric or date fields in the index config. Referencing an unknown or non-numeric field will result in an error.
+* For multivalued fields, the **minimum value** is used in the score function calculation.
+* Score functions are evaluated at query time for each matching document. The expression is compiled using Lucene's expression compiler.
+* Score functions work with both MUST (default) and SHOULD scored queries. See the [Java Client]({% post_url 2022-6-13-java %}) for API usage.
 

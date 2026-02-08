@@ -33,3 +33,8 @@ markdown: kramdown
 
 sass:
   style: compressed
+
+# Version info
+zulia_version: 4.10.1
+lucene_version: 10.3.2
+java_version: 21
