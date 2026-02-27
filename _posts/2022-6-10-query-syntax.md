@@ -193,6 +193,8 @@ A minimum should match can be set on the query which is equivalent to wrapping t
   * sub-clauses of a Boolean query can themselves be complex queries; here the min-should-match selects documents that match at least two of the provided three sub-clauses.
   * also can be written as `((yellow OR blue) crab fish)~2`
 
+**Note:** Inside minimum-should-match groups, implicit whitespace between terms is treated as OR regardless of the global default operator setting. Explicit `AND`, `+`, `-`, and `NOT` modifiers within the group are preserved. Similarly, setting `minimumNumberShouldMatch` on a query forces the default operator to OR for that query.
+
 
 
 # Interval function clauses

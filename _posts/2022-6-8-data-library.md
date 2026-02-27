@@ -17,7 +17,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:4.10.0'
+    implementation 'io.zulia:zulia-data:4.11.0'
 }
 ```
 
@@ -26,7 +26,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>4.10.0</version>
+    <version>4.11.0</version>
 </dependency>
 ```
 
@@ -352,6 +352,24 @@ ExcelTargetConfig config = ExcelTargetConfig.from(dataOutputStream)
         });
         cellRef.cell().setCellStyle(style);
     });
+```
+
+### Red Bold Cell Handler
+A built-in handler for writing red bold formatted cells, useful for emphasizing specific values:
+```java
+ExcelTargetConfig config = ExcelTargetConfig.from(dataOutputStream)
+    .withRedBoldHandler(new RedBoldCellHandler());
+```
+
+### Merged Regions
+Cells in an Excel sheet can be merged using `addMergedRegion`:
+```java
+try (ExcelTarget target = ExcelTarget.withConfig(config)) {
+    target.writeRow("Merged Title");
+    // merge row 0, columns 0 through 3
+    target.addMergedRegion(0, 0, 0, 3);
+    target.writeRow("A", "B", "C", "D");
+}
 ```
 
 ## JSON Lines Target

@@ -41,4 +41,4 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * MongoDB (for cluster mode)
 
 ### Latest Release
-* Version 4.10.1 - [Download](https://github.com/zuliaio/zuliasearch/releases)
+* Version 4.11.0 - [Download](https://github.com/zuliaio/zuliasearch/releases)
