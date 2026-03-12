@@ -5,7 +5,7 @@ description: Explaining the Zulia query syntax based on Lucene.
 ---
 # Query Syntax
 
-Zulia's query parser is based on the [lucene flexible query parser](https://lucene.apache.org/core/9_1_0/queryparser/org/apache/lucene/queryparser/flexible/standard/StandardQueryParser.html).  The documentation here is slightly modified with some zulia specific tweaks and improvements.
+Zulia's query parser is based on the [lucene flexible query parser](https://lucene.apache.org/core/10_4_0/queryparser/org/apache/lucene/queryparser/flexible/standard/StandardQueryParser.html).  The documentation here is slightly modified with some zulia specific tweaks and improvements.
 
 ### Supported query syntax
 A query consists of clauses, field specifications, grouping and Boolean operators and interval functions. We will discuss them in order.
@@ -208,7 +208,7 @@ Interval functions are a powerful tool to express search needs in terms of one o
 
 * Fields indexed with the name `fn` (not recommended) can be searched by setting fn as one of the default search fields but not by simply prefixing the query with the field name.  To use prefix a term or term grouping, use the multi field syntax with a blank additional field like `fn,:someTerm`.
 
-Please refer to the [interval functions package](https://lucene.apache.org/core/9_1_0/queryparser/org/apache/lucene/queryparser/flexible/standard/nodes/intervalfn/package-summary.html) for more information on which functions are available and how they work.
+Please refer to the [interval functions package](https://lucene.apache.org/core/10_4_0/queryparser/org/apache/lucene/queryparser/flexible/standard/nodes/intervalfn/package-summary.html) for more information on which functions are available and how they work.
 
 
 # Zulia specific query syntax
