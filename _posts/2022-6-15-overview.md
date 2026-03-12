@@ -15,7 +15,7 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * Distributed
 * Pure Java with [rich Java client](Java-Client)
 * Open Source
-* Based on Lucene 10.3.2
+* Based on Lucene 10.4.0
 
 ### Zulia supports:
 * [Searching multiple indexes with a single query](Java-Client#search-multiple-indexes)
@@ -24,6 +24,7 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * [Facet Counts](Java-Client#count-facets)
 * [Statistics](Java-Client#numeric-stat) and [Facet Statistics](Java-Client#stat-facet)
 * [Vector Search](Java-Client#vector-queries)
+* [Geo Point Search](Java-Client#geo-point-fields)
 * [Rich Query Syntax](Query-Syntax)
 
 ### Learn more
@@ -41,4 +42,4 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * MongoDB (for cluster mode)
 
 ### Latest Release
-* Version 4.11.0 - [Download](https://github.com/zuliaio/zuliasearch/releases)
+* Version 4.13.0 - [Download](https://github.com/zuliaio/zuliasearch/releases)

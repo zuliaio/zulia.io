@@ -58,7 +58,7 @@ NOTE: The boolean operators in Lucene do not use the normal precedence rules wit
    * with Default Operator AND --> `Spain AND Germany`
 * `title:(news entertainment)`
   * with Default Operator OR --> `title:(news OR entertainment)`
-  * with Default Operator AND --> `title:(news AND entertainment)`
+  * with Default Operator AND --> `title:(news AND entertainment)` 
 
 You can combine clauses using Boolean AND, OR and NOT operators to form more complex expressions, for example:
 
@@ -86,7 +86,7 @@ You can combine clauses using Boolean AND, OR and NOT operators to form more com
   * if the default operator for the query is AND, documents containing all of *pass*, *fail* or *skip* in the title field.
 
 * `title:(+test +result unknown)`
-  * *+* indicates or phrase is required
+  * *+* indicates or phrase is required 
   * if the default operator for the query is OR (default), documents containing both *test* and *result* in the title field.  The *unknown* term will be used for scoring
   * if the default operator for the query is AND, the + for required does not change the query and gives documents containing both *test*, *result*, and *unknown* in the title field.
 
@@ -114,14 +114,14 @@ To search for ranges of textual or numeric values, use square or curly brackets,
 
 * `pubDate:[2022-01-01 TO 2022-02-01]`
   * Date range example
-
+  
 * `pubDate:[2021-06-21T05:00:00.000Z TO 2021-12-12T08:10:00.000Z]`
   * Date range example with timestamp
 
 
 ## Dates
 Dates can be represented the following formats:
-  * `yyyy`
+  * `yyyy` 
     * ex. 2021
   * `yyyyy-MM` or `yyyy/MM`
     * ex. 2020-05 or 2020/05
@@ -135,9 +135,9 @@ Range query dates with / do not special handling, but otherwise they need to be 
   * `date:"2012/02/01"`
   * `date:[2012/02/02 TO 2023/03/04]`
 
-Sample queries
+Sample queries 
  * `date:2022-04`
-    * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-04-30T23:59:59.999Z]
+    * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-04-30T23:59:59.999Z] 
  * `date:2022-04-02`
    * equivalent to date:[2022-04-02T00:00:00.000Z TO 2022-04-02T23:59:59.999Z]
  * `date:[2022-04 TO 2022-05]`
@@ -157,7 +157,7 @@ Zulia indexes string fields with character length information of the input strin
 * `|||authors|||:4`
   * finds documents where authors list contains four items, i.e. *authors: ["Tom","Sally","Bob", "Jen]*
 
-*
+* 
 
 ## Term boosting
 Terms, quoted terms, term range expressions and grouped clauses can have a floating-point weight boost applied to them to increase their score relative to other clauses. For example:
@@ -185,7 +185,7 @@ A minimum-should-match operator can be applied to a disjunction Boolean query (a
 
 A minimum should match can be set on the query which is equivalent to wrapping the entire query in a minimum should match.
 
-* `(blue crab fish)@2`
+* `(blue crab fish)@2` 
   * matches all documents with at least two terms from the set [blue, crab, fish] (in any order).
   *  also can be written as `(blue crab fish)~2`
 
@@ -226,13 +226,35 @@ They can be done as a separate query since 2.7.0 (NumericSetQuery in Java) and i
 
 
 ## Terms In Set Query
-Term in set queries are a more efficient way to search a set of terms as they appear in the search index (tokenized and filtered for non keyword analyzers). If a keyword analyzer is used terms will be case-sensitive and need to be a complete match.
+Term in set queries are a more efficient way to search a set of terms as they appear in the search index (tokenized and filtered for non keyword analyzers). If a keyword analyzer is used terms will be case-sensitive and need to be a complete match.  
 They can be done as a separate query since 1.7.35 (TermQuery in Java) and inline with a query using the syntax below since 3.4.1.
 
 * `id:zl:tq(abc 123 xyz rrr)`
   * searches field id for analyzed terms abc, xyz, or rrr.  If id field was analyzed as lower case keyword this would match ids ABC or Xyz.
-* `mainTopic,subTopic:zl:tq("Lung Cancer" "Brain Cancer" Diabetes)`
+* `mainTopic,subTopic:zl:tq("Lung Cancer" "Brain Cancer" Diabetes)`  
   * searches field mainTopic and subTopic for terms "Lung Cancer" "Brain Cancer" Diabetes, returning documents if either field matched any term.  In this case topics and subTopics are assumed to be keyword fields.
+
+## Geo Point Queries
+
+Geo point queries filter documents based on geographic location. The field must be configured as a `GEO_POINT` type with `.index()` enabled.
+
+### Geo Distance
+Find documents within a radius (in kilometers) from a point:
+* `location:zl:geo(location 40.7128 -74.0060 200)`
+  * documents with a location within 200 km of latitude 40.7128, longitude -74.0060 (New York City)
+* `coords:zl:geo(coords 51.5074 -0.1278 100)`
+  * documents with coords within 100 km of London
+
+The syntax is: `fieldName:zl:geo(fieldName latitude longitude distanceKm)`
+
+### Geo Bounding Box
+Find documents within a rectangular area:
+* `location:zl:geoBbox(location 25 50 -130 -60)`
+  * documents with a location inside the bounding box from latitude 25-50, longitude -130 to -60 (continental US)
+* `location:zl:geoBbox(location 40.5 41.0 -74.5 -73.5)`
+  * documents with a location in a small box around New York City
+
+The syntax is: `fieldName:zl:geoBbox(fieldName minLat maxLat minLon maxLon)`
 
 ## Notes
 * Fields indexed with the name `zl` (not recommended) can be searched by setting zl as one of the default search fields but not by simply prefixing the query with the field name.  To use prefix a term or term grouping, use the multi field syntax with a blank additional field like `zl,:someTerm`.
@@ -248,6 +270,8 @@ Score functions allow you to modify the relevance score of matching documents us
 * Any numeric or date field that is configured with `.sort()` in the index config
 
 Supported field types for score function variables: `NUMERIC_INT`, `NUMERIC_LONG`, `NUMERIC_FLOAT`, `NUMERIC_DOUBLE`, `DATE`
+
+Additionally, `geodist(fieldName, latitude, longitude)` is available for `GEO_POINT` fields configured with `.sort()`. It returns the distance in **kilometers** from the given point to the document's location.
 
 ## Available Functions
 
@@ -270,10 +294,12 @@ Standard arithmetic operators (`+`, `-`, `*`, `/`, `%`) and the following math f
 * `zuliaScore * (sqrt(popularity) + pageRank)` - Combine multiple fields
 * `zuliaScore / (1 + popularity)` - Invert ranking (favor low popularity)
 * `publishDate` - Rank purely by date (epoch milliseconds, most recent first)
+* `1.0 / (1.0 + geodist(location, 40.7128, -74.0060))` - Score by proximity to NYC (closer = higher score)
+* `zuliaScore * (1.0 / (1.0 + geodist(location, 40.7128, -74.0060)))` - Combine text relevance with proximity
 
 ## Notes
 * Fields referenced in a score function must be configured as sortable numeric or date fields in the index config. Referencing an unknown or non-numeric field will result in an error.
 * For multivalued fields, the **minimum value** is used in the score function calculation.
 * Score functions are evaluated at query time for each matching document. The expression is compiled using Lucene's expression compiler.
-* Score functions work with both MUST (default) and SHOULD scored queries. See the [Java Client]({% post_url 2022-6-13-java %}) for API usage.
+* Score functions work with both MUST (default) and SHOULD scored queries. See the [[Java-Client]] for API usage.
 

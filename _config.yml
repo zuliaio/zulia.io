@@ -35,6 +35,6 @@ sass:
   style: compressed
 
 # Version info
-zulia_version: 4.11.0
-lucene_version: 10.3.2
+zulia_version: 4.13.0
+lucene_version: 10.4.0
 java_version: 21

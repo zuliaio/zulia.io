@@ -17,7 +17,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:4.11.0'
+    implementation 'io.zulia:zulia-data:4.13.0'
 }
 ```
 
@@ -26,7 +26,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>4.11.0</version>
+    <version>4.13.0</version>
 </dependency>
 ```
 
