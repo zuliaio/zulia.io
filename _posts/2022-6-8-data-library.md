@@ -17,7 +17,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:4.15.5'
+    implementation 'io.zulia:zulia-data:4.17.0'
 }
 ```
 
@@ -26,13 +26,13 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>4.15.5</version>
+    <version>4.17.0</version>
 </dependency>
 ```
 
 # Reading Data (Sources)
 
-## Auto-Detect Format
+## Auto-Detect Spreadsheet Format
 
 The `SpreadsheetSourceFactory` auto-detects the format from the file extension and creates the appropriate source.
 
