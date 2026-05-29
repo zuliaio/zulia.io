@@ -3,6 +3,7 @@ layout: post
 title: Testing
 description: Validate search results with the Zulia test framework
 ---
+
 # Zulia Test Framework
 
 The `zuliatest` command is a YAML-driven testing framework for validating Zulia search results. It executes queries against a Zulia cluster and evaluates JavaScript expressions to assert expected results, producing a CSV report.
@@ -20,7 +21,6 @@ zuliatest --testConfig /path/to/test_config.yaml --testOutput /path/to/results.c
 --testConfig  Full path to the test config YAML file (required)
 --testOutput  Full path to the test output CSV file (required)
 --showStack   Show stack traces on errors
---version     Show version info
 ```
 
 ### Exit Codes

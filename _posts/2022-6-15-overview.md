@@ -13,22 +13,25 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 ### Zulia is:
 * Realtime
 * Distributed
-* Pure Java with [rich Java client](Java-Client)
+* Pure Java with [rich Java client]({% post_url 2022-6-13-java %})
 * Open Source
 * Based on Lucene 10.4.0
 
 ### Zulia supports:
-* [Searching multiple indexes with a single query](Java-Client#search-multiple-indexes)
-* [Storing associated files with the documents (images, pdfs, ...)](Java-Client#storing-associated-documents)
-* [Sorting](Java-Client#sorting)
-* [Facet Counts](Java-Client#count-facets)
-* [Statistics](Java-Client#numeric-stat) and [Facet Statistics](Java-Client#stat-facet)
-* [Vector Search](Java-Client#vector-queries)
-* [Geo Point Search](Java-Client#geo-point-fields)
-* [Rich Query Syntax](Query-Syntax)
+* [Searching multiple indexes (including wildcard patterns) with a single query]({% post_url 2022-6-13-java %}#search-multiple-indexes)
+* [Storing associated files with the documents (images, pdfs, ...)]({% post_url 2022-6-13-java %}#storing-associated-documents)
+* [Sorting]({% post_url 2022-6-13-java %}#sorting)
+* [Facet Counts]({% post_url 2022-6-13-java %}#count-facets)
+* [Statistics]({% post_url 2022-6-13-java %}#numeric-stat) and [Facet Statistics]({% post_url 2022-6-13-java %}#stat-facet)
+* [Vector and Hybrid Search (BM25 + vector)]({% post_url 2022-6-13-java %}#vector-queries)
+* [Geo Point Search]({% post_url 2022-6-13-java %}#geo-point-fields)
+* [Multi-index Aliases with a designated Write Index]({% post_url 2022-6-13-java %}#index-aliases)
+* [Lucene Segment Replication across nodes]({% post_url 2022-6-14-install %}#replication)
+* [Rich Query Syntax]({% post_url 2022-6-10-query-syntax %})
 
 ### Learn more
 * [Install]({% post_url 2022-6-14-install %})
+* [Sharding and Replication]({% post_url 2022-6-13-sharding %})
 * [Command Line Client]({% post_url 2022-6-11-cli %})
 * [Java Client]({% post_url 2022-6-13-java %})
 * [Rest Service]({% post_url 2022-6-12-rest %})
@@ -38,8 +41,8 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 
 
 ### Requirements
-* Java 21-25 (Tested on Java 21 and Java 25)
+* Java 25
 * MongoDB (for cluster mode)
 
 ### Latest Release
-* Version 4.17.0 - [Download](https://github.com/zuliaio/zuliasearch/releases)
+* Version 4.18.0 - [Download](https://github.com/zuliaio/zuliasearch/releases)

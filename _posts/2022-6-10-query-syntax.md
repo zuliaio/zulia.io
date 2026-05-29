@@ -3,6 +3,7 @@ layout: post
 title: Query Syntax
 description: Explaining the Zulia query syntax based on Lucene.
 ---
+
 # Query Syntax
 
 Zulia's query parser is based on the [lucene flexible query parser](https://lucene.apache.org/core/10_4_0/queryparser/org/apache/lucene/queryparser/flexible/standard/StandardQueryParser.html).  The documentation here is slightly modified with some zulia specific tweaks and improvements.
@@ -279,11 +280,14 @@ Standard arithmetic operators (`+`, `-`, `*`, `/`, `%`) and the following math f
 
 * `sqrt(x)` - Square root
 * `ln(x)` - Natural logarithm
-* `log(x)` - Logarithm base 10
+* `log10(x)` - Logarithm base 10
+* `exp(x)` - e raised to the power x
 * `abs(x)` - Absolute value
 * `max(a, b)` - Maximum of two values
 * `min(a, b)` - Minimum of two values
 * `pow(a, b)` - Power (a raised to the power b)
+
+Expressions are compiled with Lucene's `JavascriptCompiler`, so its full default function set (trigonometric, hyperbolic, `ceil`, `floor`, `haversin`, etc.) is also available.
 
 ## Examples
 
@@ -301,5 +305,5 @@ Standard arithmetic operators (`+`, `-`, `*`, `/`, `%`) and the following math f
 * Fields referenced in a score function must be configured as sortable numeric or date fields in the index config. Referencing an unknown or non-numeric field will result in an error.
 * For multivalued fields, the **minimum value** is used in the score function calculation.
 * Score functions are evaluated at query time for each matching document. The expression is compiled using Lucene's expression compiler.
-* Score functions work with both MUST (default) and SHOULD scored queries. See the [[Java-Client]] for API usage.
+* Score functions work with both MUST (default) and SHOULD scored queries. See the [Java-Client]({% post_url 2022-6-13-java %}) for API usage.
 

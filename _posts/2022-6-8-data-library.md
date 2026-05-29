@@ -3,6 +3,7 @@ layout: post
 title: Data Library
 description: Standalone library for reading and writing CSV, TSV, Excel, and JSON data
 ---
+
 # Zulia Data Library
 
 The `zulia-data` module is a standalone Java library for reading and writing CSV, TSV, Excel, and JSON data. It provides a unified API with format auto-detection, configurable type handling, and streaming support for large files.
@@ -17,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:4.17.0'
+    implementation 'io.zulia:zulia-data:4.18.0'
 }
 ```
 
@@ -26,7 +27,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>4.17.0</version>
+    <version>4.18.0</version>
 </dependency>
 ```
 
@@ -181,9 +182,9 @@ try (ExcelSource source = ExcelSource.withConfig(config)) {
 
     for (ExcelRecord record : source) { ... }
 
-    // Query sheet info
-    int count = config.getNumberOfSheets();
-    String name = config.getActiveSheetName();
+    // Query sheet info (these methods are on ExcelSource, not ExcelSourceConfig)
+    int count = source.getNumberOfSheets();
+    String name = source.getActiveSheetName();
 }
 ```
 
