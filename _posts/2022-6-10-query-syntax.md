@@ -128,13 +128,20 @@ Dates can be represented the following formats:
     * ex. 2020-05 or 2020/05
   * `yyyy-MM-dd` or `yyyy/MM/dd`
     * ex. 2004-04-01 or 2004/04/01
-  * `yyyy-MM-ddTHH:mm:ss.SSSZ` or `yyyy/MM/ddTHH:mm:ss.SSSZ`
+  * `yyyy-MM-ddTHH:mm[:ss[.SSS]][XXX]` or `yyyy/MM/ddTHH:mm[:ss[.SSS]][XXX]`
     * ex. 2012-08-03T11:59:00.000Z or 2012/08/03T11:59:00.000Z
+    * the zone offset is optional; when omitted the time is assumed to be UTC (ex. 2012-08-03T11:59:00)
 
 Range query dates with / do not special handling, but otherwise they need to be quoted or escaped
 * ex:
   * `date:"2012/02/01"`
   * `date:[2012/02/02 TO 2023/03/04]`
+
+A timestamp value used on its own (a point query) must be quoted or escaped, because its `:` characters are otherwise read as field separators. Inside a range this is not needed.
+* ex:
+  * `date:"2012-08-03T11:59:00.000Z"` (quoted)
+  * `date:2012-08-03T11\:59\:00.000Z` (backslash escaped)
+  * `date:[2012-08-03T11:59:00.000Z TO 2012-08-03T12:00:00.000Z]` (range, no quoting needed)
 
 Sample queries 
  * `date:2022-04`
