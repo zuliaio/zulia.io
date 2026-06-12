@@ -24,6 +24,7 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * [Facet Counts]({% post_url 2022-6-13-java %}#count-facets)
 * [Statistics]({% post_url 2022-6-13-java %}#numeric-stat) and [Facet Statistics]({% post_url 2022-6-13-java %}#stat-facet)
 * [Vector and Hybrid Search (BM25 + vector)]({% post_url 2022-6-13-java %}#vector-queries)
+* [More-Like-This Queries (lexical, vector, and hybrid)]({% post_url 2022-6-13-java %}#more-like-this-queries)
 * [Geo Point Search]({% post_url 2022-6-13-java %}#geo-point-fields)
 * [Multi-index Aliases with a designated Write Index]({% post_url 2022-6-13-java %}#index-aliases)
 * [Lucene Segment Replication across nodes]({% post_url 2022-6-14-install %}#replication)
@@ -45,4 +46,4 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * MongoDB (for cluster mode)
 
 ### Latest Release
-* Version 5.0.1 - [Download](https://github.com/zuliaio/zuliasearch/releases)
+* Version 5.1.0 - [Download](https://github.com/zuliaio/zuliasearch/releases)

@@ -18,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:5.0.1'
+    implementation 'io.zulia:zulia-data:5.1.0'
 }
 ```
 
@@ -27,7 +27,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>5.0.1</version>
+    <version>5.1.0</version>
 </dependency>
 ```
 
@@ -407,6 +407,12 @@ FileDataInputStream input = FileDataInputStream.from("/data/test.csv");
 // From a raw InputStream (single use, no reset)
 DataStreamMeta meta = DataStreamMeta.fromFileName("data.csv");
 SingleUseDataInputStream input = SingleUseDataInputStream.from(inputStream, meta);
+
+// Convenience overloads infer the metadata from a filename (and optional content type)
+SingleUseDataInputStream fromName = SingleUseDataInputStream.from(inputStream, "data.csv");
+
+// From an in-memory byte array
+SingleUseDataInputStream fromBytes = SingleUseDataInputStream.from(bytes, "data.csv");
 ```
 
 ### Writing
