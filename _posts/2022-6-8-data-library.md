@@ -12,13 +12,10 @@ The `zulia-data` module is a standalone Java library for reading and writing CSV
 ```bash
 repositories {
     mavenCentral()
-    maven {
-        url "https://maven.ascend-tech.us/repo/"
-    }
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:5.3.1'
+    implementation 'io.zulia:zulia-data:5.4.0'
 }
 ```
 
@@ -27,7 +24,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>5.3.1</version>
+    <version>5.4.0</version>
 </dependency>
 ```
 
@@ -165,6 +162,8 @@ try (ExcelSource source = ExcelSource.withConfig(config)) {
 | `withHeaders()` | no headers | Read first row as headers |
 | `withStrictHeaders()` | no headers | Headers with no duplicates or blanks allowed |
 | `withListDelimiter(char)` | `;` | Delimiter for list values within a cell |
+| `withBooleanParser(Function)` | true/t/yes/y/1 | Custom boolean parsing for text cells and list elements |
+| `withDateParser(Function)` | ISO_DATE_TIME | Custom date parsing for text cells and list elements |
 | `withExcelCellHandler(handler)` | DefaultExcelCellHandler | Custom cell type conversion |
 | `setOpenHandling(handling)` | FIRST_SHEET | FIRST_SHEET or ACTIVE_SHEET |
 
