@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-signals:5.4.0'
+    implementation 'io.zulia:zulia-signals:5.5.0'
 }
 ```
 
@@ -28,7 +28,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-signals</artifactId>
-    <version>5.4.0</version>
+    <version>5.5.0</version>
 </dependency>
 ```
 

@@ -167,6 +167,22 @@ Zulia indexes string fields with character length information of the input strin
 
 * 
 
+## Field presence and malformed values
+
+Every indexed value marks its indexed field name as present on the document, so a pure wildcard on a field asks whether the document has a real value for it
+
+* `title:*`
+  * documents that have a value for title, including an empty string or an empty list
+
+* `-title:*`
+  * documents that have no value for title. A value that came from a field default does not count as present, so this still finds the documents that omitted the field even when a default lets `active:false` match them too
+
+* `_zmff_:authorCount`
+  * documents where at least one value of the stored field authorCount was skipped or replaced under lenient malformed value handling (`SKIP` or `USE_DEFAULT` on the field config). The marker is keyed by the stored field name. Use it to find the documents to repair
+
+* `_zmff_:*`
+  * documents with a skipped or replaced value in any field. `-_zmff_:*` keeps only the fully parsed documents
+
 ## Term boosting
 Terms, quoted terms, term range expressions and grouped clauses can have a floating-point weight boost applied to them to increase their score relative to other clauses. For example:
 
