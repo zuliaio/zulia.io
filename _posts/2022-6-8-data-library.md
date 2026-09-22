@@ -15,7 +15,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:5.5.0'
+    implementation 'io.zulia:zulia-data:5.5.1'
 }
 ```
 
@@ -24,7 +24,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>5.5.0</version>
+    <version>5.5.1</version>
 </dependency>
 ```
 
@@ -56,6 +56,15 @@ SpreadsheetSource<?> source = SpreadsheetSourceFactory.fromFileWithStrictHeaders
 SpreadsheetSource<?> source = SpreadsheetSourceFactory.fromFileWithoutHeaders(filePath);
 ```
 
+### Header Config
+
+`withHeaders(HeaderConfig)` on any source config sets the header handling in detail. Standard headers are `new HeaderConfig()`, which allows duplicates and blanks. Strict headers allow neither. `ignoreTrailingBlanks(true)` drops blank header cells after the last named header, which is what a spreadsheet leaves behind when formatting was applied past the data. Those cells otherwise become columns named `""`, `_2`, ... under standard headers and fail strict headers. A blank between two named headers is still governed by `allowBlanks`. A value under a dropped header can only be read by index.
+
+```java
+HeaderConfig trimmed = new HeaderConfig().allowDuplicates(false).allowBlanks(false).ignoreTrailingBlanks(true);
+SpreadsheetSource<?> source = SpreadsheetSourceFactory.fromFile(filePath, HeaderOptions.STANDARD, config -> config.withHeaders(trimmed));
+```
+
 ### From Input Streams
 ```java
 // From a DataInputStream
@@ -64,6 +73,37 @@ SpreadsheetSource<?> source = SpreadsheetSourceFactory.fromStreamWithHeaders(dat
 // From a raw InputStream with metadata
 DataStreamMeta meta = DataStreamMeta.fromFileName("data.xlsx");
 SpreadsheetSource<?> source = SpreadsheetSourceFactory.fromSingleUseStreamWithHeaders(inputStream, meta);
+```
+
+### Configuring the Source
+
+`fromFile`, `fromStream` and `fromSingleUseStream` take a `HeaderOptions` and a `Consumer<SpreadsheetSourceConfig>`. The configurer runs after the header options against whichever config the file type selects, so the parsers, the list delimiter or a list handler can be set without knowing whether the file is delimited or Excel. `SpreadsheetSourceConfig` is the configuration every source shares. A type-specific option such as the CSV field delimiter still needs the type-specific config below.
+
+```java
+try (SpreadsheetSource<?> source = SpreadsheetSourceFactory.fromFile("/data/input.xlsx", HeaderOptions.STANDARD,
+        config -> config.withListDelimiter('|').withParsers(CellParsers.zuliaDates()))) {
+    for (SpreadsheetRecord record : source) {
+        Date created = record.getDate("created");
+        List<String> tags = record.getList("tags", String.class);
+    }
+}
+```
+
+### Cell Parsers
+
+`CellParsers` holds the boolean parser, the date parser and the date formatter a source applies to text cells and to the elements of a delimited list. `withParsers(CellParsers)` replaces all three on any source config. `withBooleanParser` and `withDateParser` replace one. The default date parser reads ISO date time with an offset or zone id, such as `2024-12-18T08:00:00Z[Etc/UTC]`, which is what the targets write.
+
+| Parser | Reads |
+|--------|-------|
+| `CellParsers.isoDateParser(ZoneId)` | ISO date time. A value without an offset is read in the given zone. |
+| `CellParsers.flexibleIsoDateParser(ZoneId)` | ISO date time or a plain ISO date such as `2024-05-01`, taken as the start of that day in the given zone. Resolves strictly, so `2024-02-30` is rejected. |
+| `CellParsers.zuliaDateParser()` | Every date form a Zulia date field accepts: a timestamp with an optional offset, a date, a year month or a year, with `/` allowed in place of `-`. A value without an offset is UTC. Also ISO date time with a bracketed zone id is accepted, such as `2024-12-18T08:00:00Z[Etc/UTC]`, so files written by the default formatter still read. |
+
+`CellParsers.zuliaDates()` pairs `zuliaDateParser` with `zuliaDateFormatter`, which writes an ISO instant, so a file is read exactly the way the index reads it. Every parser reports a bad value as `DateTimeParseException`. A month first or day first date such as `5/1/2024` is rejected by all of them, since both readings are valid dates and a guess would store the wrong one silently. Pass your own parser through `withDateParser` for such a column.
+
+```java
+CellParsers plainDates = CellParsers.defaults().withDateParser(CellParsers.flexibleIsoDateParser(ZoneId.of("America/New_York")));
+CSVSourceConfig config = CSVSourceConfig.from(input).withHeaders().withParsers(plainDates);
 ```
 
 ## Record Access
@@ -120,10 +160,12 @@ try (CSVSource source = CSVSource.withConfig(config)) {
 |--------|---------|-------------|
 | `withHeaders()` | no headers | Read first row as headers |
 | `withStrictHeaders()` | no headers | Headers with no duplicates or blanks allowed |
+| `withHeaders(HeaderConfig)` | no headers | Headers with explicit duplicate, blank and trailing blank handling |
 | `withDelimiter(char)` | `,` | Field delimiter |
 | `withListDelimiter(char)` | `;` | Delimiter for list values within a cell |
 | `withBooleanParser(Function)` | true/t/yes/y/1 | Custom boolean parsing |
 | `withDateParser(Function)` | ISO_DATE_TIME | Custom date parsing |
+| `withParsers(CellParsers)` | `CellParsers.defaults()` | Boolean parser, date parser and date formatter in one call |
 
 ## TSV Source
 
@@ -161,9 +203,11 @@ try (ExcelSource source = ExcelSource.withConfig(config)) {
 |--------|---------|-------------|
 | `withHeaders()` | no headers | Read first row as headers |
 | `withStrictHeaders()` | no headers | Headers with no duplicates or blanks allowed |
+| `withHeaders(HeaderConfig)` | no headers | Headers with explicit duplicate, blank and trailing blank handling |
 | `withListDelimiter(char)` | `;` | Delimiter for list values within a cell |
 | `withBooleanParser(Function)` | true/t/yes/y/1 | Custom boolean parsing for text cells and list elements |
 | `withDateParser(Function)` | ISO_DATE_TIME | Custom date parsing for text cells and list elements |
+| `withParsers(CellParsers)` | `CellParsers.defaults()` | Boolean parser, date parser and date formatter in one call, for text cells and list elements |
 | `withExcelCellHandler(handler)` | DefaultExcelCellHandler | Custom cell type conversion |
 | `setOpenHandling(handling)` | FIRST_SHEET | FIRST_SHEET or ACTIVE_SHEET |
 

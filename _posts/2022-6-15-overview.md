@@ -31,6 +31,7 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * [Transient Indexes with lazy loading and eviction]({% post_url 2022-6-13-java %}#transient-indexes)
 * [Lucene Segment Replication across nodes]({% post_url 2022-6-14-install %}#replication)
 * [Rich Query Syntax]({% post_url 2022-6-10-query-syntax %})
+* [Usage signals and search analytics with the Signals Library (beta)]({% post_url 2022-6-7-signals-library %})
 
 ### Learn more
 * [Install]({% post_url 2022-6-14-install %})
@@ -41,6 +42,7 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * [Query Syntax]({% post_url 2022-6-10-query-syntax %})
 * [Testing]({% post_url 2022-6-9-testing %})
 * [Data Library]({% post_url 2022-6-8-data-library %})
+* [Signals Library (beta)]({% post_url 2022-6-7-signals-library %})
 
 
 ### Requirements
@@ -48,4 +50,4 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * MongoDB (for cluster mode)
 
 ### Latest Release
-* Version 5.5.0 - [Download](https://github.com/zuliaio/zuliasearch/releases)
+* Version 5.5.1 - [Download](https://github.com/zuliaio/zuliasearch/releases)

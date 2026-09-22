@@ -19,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-signals:5.5.0'
+    implementation 'io.zulia:zulia-signals:5.5.1'
 }
 ```
 
@@ -28,7 +28,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-signals</artifactId>
-    <version>5.5.0</version>
+    <version>5.5.1</version>
 </dependency>
 ```
 
@@ -40,12 +40,12 @@ A `Signal` is one thing an actor did in an application. It carries:
 * `actor` (required): who did it, an `Actor` with an id and an `ActorType`.
 * `action` (required): what they did, an open string. `Actions` holds the common ones.
 * `target`: what they did it to, a type and one or more ids. `Targets` holds the common types.
-* `client` and `session`: the channel (web, mobile, api) and a client session id, both optional.
+* `client` and `session`: the channel (web, mobile, api) and a client minted session id, both optional.
 * `search`: query text, indexes, result count, latency, impressions, and click position for search and click signals.
 * `duration`: an elapsed time for exit style signals such as logout.
 * `tags`: app specific key and value pairs. Declared tag keys become report dimensions.
 
-`signalId` (a random UUID) and `timestamp` default at build time and can be set explicitly, for example, when importing old logs.
+`signalId` (a random UUID) and `timestamp` default at build time and can be set explicitly, for example when importing old logs.
 
 ## Actors
 
@@ -92,7 +92,7 @@ SignalsIndexConfig config = SignalsIndexConfig.defaults()
 
 SignalsClient signals = new SignalsClient(pool, config)
         .onFailure(RecordFailurePolicy.LOG_AND_DROP)
-        .stamping(builder -> builder.tag("version", "2.4.1")); // optional stamping for items that are needed on every signal
+        .stamping(builder -> builder.tag("version", "2.4.1"));
 
 // optional, fails fast at startup if Zulia is unreachable. record creates the index on first use otherwise.
 signals.ensureStorage();
@@ -272,6 +272,8 @@ Partitioning cannot be switched on for an existing single index of the same name
 
 # Reports
 
+## Usage Reports
+
 `UsageReports` answers the usual questions with facet requests. Every report is scoped to one app and one `TimeRange`, from inclusive and to exclusive.
 
 ```java
@@ -298,7 +300,32 @@ SYSTEM actors are excluded from every report. To see platform load next to usage
 List<DimensionCount> load = shop.includingSystem().by(SignalField.ACTOR_TYPE);
 ```
 
-Counts are exact up to 10,000 values per dimension. A distinct count past that limit throws instead of returning a truncated number.
+Counts are exact up to 50,000 values per dimension. A grouped report past that limit returns the top values. A distinct count or a tally past it throws instead of returning a truncated number. `maxFacetValues` raises or lowers the limit. Every value comes back in one response, so a higher limit costs response size on every report.
+
+```java
+UsageReports reports = new UsageReports(signals).maxFacetValues(200_000);
+```
+
+## Per Actor Tallies
+
+`forActivity` narrows a report to one action, optionally on one target type. `forActor` narrows it to one actor. `tally` counts signals per actor for a list of activities, which is the usual activity table with one column per activity and one row per actor that did at least one of them.
+
+```java
+Activity projectsCreated = Activity.of(Actions.CREATE, Targets.PROJECT);
+Activity recordsVisited = Activity.of(Actions.VISIT, Targets.RECORD);
+Activity logins = Activity.of(Actions.LOGIN);                                  // any target or none
+
+List<ActorActivity> rows = shop.tally(projectsCreated, recordsVisited, logins);  // by total descending
+for (ActorActivity row : rows) {
+    System.out.println(row.actorId() + " " + row.count(projectsCreated) + " " + row.count(recordsVisited) + " " + row.count(logins));
+}
+
+List<DimensionCount> creators = shop.forActivity(projectsCreated).by(SignalField.ACTOR_ID);   // one column
+List<ActorActivity> oneRow = shop.forActor("u-1042").tally(projectsCreated, recordsVisited);      // one row, empty when the actor did none
+long recordsSeen = shop.forActor("u-1042").distinct(Targets.RECORD, Actions.VISIT);            // distinct records for one actor
+```
+
+A tally runs one search per activity, so its cost does not grow with the number of actors. It counts signals, so a bulk signal counts once. Distinct targets per actor go through `forActor` and `distinct`. `forActor` takes the real actor id and maps it the way the client stored it, so it works under a pseudonymizing `ActorIdMapper`. The `actorId` on each row is the stored id, so under `hmacSha256` it is the pseudonym and cannot be turned back into the real id. Keep the activities disjoint. An activity without a target type overlaps every activity of that action, and the total that orders the rows is the sum of the columns. A report narrows to one activity and one actor at most once, so `tally` runs on a report that is not already narrowed by `forActivity`. A tally with at least `maxFacetValues` actors for one activity throws rather than drop actors.
 
 ## Custom Queries
 
