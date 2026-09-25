@@ -12,6 +12,8 @@ Signals are recorded through the regular Java client, so the only infrastructure
 
 **Beta.** `zulia-signals` ships in Zulia 5.4.0 as a beta module. The API and the stored schema may change in a later 5.x release based on feedback from the first deployments. Changes will be called out in the release notes.
 
+This page describes the module as of 5.5.2. Coming from 5.5.1: `ActorActivity` is now `ActorTally<Activity>`, `SignalsIndexConfig.dimensions` and `dimension` are `indexTags` and `indexTag` (the old names still work, deprecated), and `record` also takes a `Signal.Builder`. The stored schema is unchanged.
+
 ## Gradle
 ```bash
 repositories {
@@ -19,7 +21,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-signals:5.5.1'
+    implementation 'io.zulia:zulia-signals:5.5.2'
 }
 ```
 
@@ -28,7 +30,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-signals</artifactId>
-    <version>5.5.1</version>
+    <version>5.5.2</version>
 </dependency>
 ```
 
@@ -40,10 +42,10 @@ A `Signal` is one thing an actor did in an application. It carries:
 * `actor` (required): who did it, an `Actor` with an id and an `ActorType`.
 * `action` (required): what they did, an open string. `Actions` holds the common ones.
 * `target`: what they did it to, a type and one or more ids. `Targets` holds the common types.
-* `client` and `session`: the channel (web, mobile, api) and a client minted session id, both optional.
+* `client` and `session`: the channel (web, mobile, api) and a session id, both optional. When the only session handle is a secret such as the bearer token, `sessionHashed(token)` stores a SHA-256 derived id instead of the token.
 * `search`: query text, indexes, result count, latency, impressions, and click position for search and click signals.
 * `duration`: an elapsed time for exit style signals such as logout.
-* `tags`: app specific key and value pairs. Declared tag keys become report dimensions.
+* `tags`: app specific key and value pairs. Every tag is stored. An indexed tag key can be filtered, counted, and tallied on.
 
 `signalId` (a random UUID) and `timestamp` default at build time and can be set explicitly, for example when importing old logs.
 
@@ -79,7 +81,7 @@ Targets.DOCUMENT
 
 ## Setup
 
-`SignalsIndexConfig` describes the index and the report dimensions. `SignalsClient` records signals through a `ZuliaWorkPool`.
+`SignalsIndexConfig` describes the index and which tags it indexes. `SignalsClient` records signals through a `ZuliaWorkPool`.
 
 ```java
 ZuliaWorkPool pool = new ZuliaWorkPool(ZuliaPoolConfig.localhost());
@@ -87,8 +89,8 @@ ZuliaWorkPool pool = new ZuliaWorkPool(ZuliaPoolConfig.localhost());
 SignalsIndexConfig config = SignalsIndexConfig.defaults()
         .indexName("signals")                        // the default
         .zone(ZoneId.of("America/New_York"))         // zone for day, week, and month buckets, UTC by default
-        .dimensions("category", "plan")              // tag keys to filter and facet on
-        .dimension("items", SignalField.Kind.LONG);  // a numeric tag key for range filters
+        .indexTags("category", "plan")               // tag keys to filter, count, and tally on
+        .indexTag("items", SignalField.Kind.LONG);   // a numeric tag key for range filters
 
 SignalsClient signals = new SignalsClient(pool, config)
         .onFailure(RecordFailurePolicy.LOG_AND_DROP)
@@ -118,11 +120,11 @@ result.accepted();   // false when the signal was dropped under LOG_AND_DROP
 signals.recordAll(List.of(viewed, another));
 ```
 
-`build()` names any missing required value in its error. Recording never mutates the signal, so the same `Signal` can be logged, recorded, and passed on.
+`build()` names any missing required value in its error. `record` also accepts the builder itself and builds under the failure policy, see below. Recording never mutates the signal, so the same `Signal` can be logged, recorded, and passed on.
 
 ### Tags
 
-Tags carry the facts an application cares about. Values can be a string, long, boolean, enum (stored by name), `Instant`, or a list of strings. A list tag declared as a dimension facets once per element.
+Tags carry the facts an application cares about. Values can be a string, long, boolean, enum (stored by name), `Instant`, or a list of strings. An indexed list tag facets once per element.
 
 ```java
 Signal.builder()
@@ -137,7 +139,7 @@ Signal.builder()
         .build();
 ```
 
-Every tag is stored. Only declared dimensions are indexed, so a dimension declared later reaches old signals by reindexing. A tag key must not contain `.` or `$`. A tag declared with a kind must carry a matching value: a LONG dimension rejects a string, an INT dimension rejects a value that does not fit an int.
+Every tag is stored. Only tag keys named in `indexTags` or `indexTag` are indexed, and only those can be used in reports. The index is created with the keys indexed at that time. A key indexed later is pushed to the index the next time the client sets up storage, and reaches the signals recorded before that only by reindexing. A tag key must not contain `.` or `$`. A tag indexed with a kind must carry a matching value: a LONG tag rejects a string, an INT tag rejects a value that does not fit an int.
 
 ### Bulk Targets
 
@@ -164,12 +166,29 @@ The failure policy decides what happens when Zulia is unreachable while recordin
 
 Under `LOG_AND_DROP` the writer queue holds 10,000 signals. Past that, `record` drops the signal, returns a result with `accepted() == false`, and counts the drop. `queuedSignals()` reports the queue depth. `close()` drains the queue for up to five seconds, so call it at shutdown.
 
+Under `LOG_AND_DROP` nothing about recording throws. `record(Signal.Builder)` builds inside the policy, so a signal that fails validation, a stamp that breaks it, or a tag the index schema rejects is a counted drop with `accepted() == false`, and the request path needs no try and catch of its own. A signal that never built has a null id on its result. Under `PROPAGATE` those validation errors are thrown as they are, since they are programming errors.
+
+```java
+signals.record(Signal.builder().app("shop").actor(actor).action(Actions.VIEW).target(Targets.PAGE, "home"));   // never throws under LOG_AND_DROP
+```
+
 ```java
 SignalsClient signals = new SignalsClient(pool, config).onFailure(RecordFailurePolicy.LOG_AND_DROP);
 // ...
 long dropped = signals.droppedSignals();   // a gauge for monitoring
 signals.close();
 ```
+
+## Session Ids from Secrets
+
+A session id groups one login's signals. Applications on bearer tokens often have no other session handle, and the token must never land in the index, since anyone who can read the index could replay it. `SessionIds.hashed` derives a stable 32 character id from any secret, and the builder's `sessionHashed` applies it in place.
+
+```java
+Signal.builder().app("shop").actor(Actor.user("u-1042")).sessionHashed(bearerToken)   // stores 5f4dcc3b..., never the token
+String sessionId = SessionIds.hashed(bearerToken);                                   // the same id, for passing around
+```
+
+A refreshed token starts a new session. A null or blank secret leaves the session unset. A plain hash is enough for a high entropy secret like a signed token. Use the actor id mapper's keyed HMAC for guessable values such as an email.
 
 ## Pseudonymizing Actor Ids
 
@@ -234,14 +253,14 @@ Signal paged = Signal.builder().app("shop").actor(Actor.user("u-1042")).action("
 
 ## Index Schema
 
-Every signal is stored as one document with these fields. Built in fields live at the top level and tags live in a `tags` sub document.
+Every signal is stored as one document with these fields. Built in fields live at the top level and tags live in a `tags` sub document. Custom searches name an indexed tag as `tags.<key>`.
 
 | Field | Type | Indexed as | Used for |
 |:--|:--|:--|:--|
 | signalId | STRING | keyword, the unique id | idempotent ingest |
 | timestamp, receivedAt | DATE | sortable | ordering, range filters, retention |
 | day, week, month | STRING | keyword facet | time series without a date histogram, stamped in the configured zone |
-| app, client, actorType, actionType, targetType | STRING | keyword facet | every report's group by |
+| app, client, actorType, actionType, targetType | STRING | keyword facet | every report's group by, `by` and `tallyBy` |
 | actorId, targetId | STRING, targetId a list for a bulk | keyword facet | active users, distinct targets |
 | sessionId, delegatedBy | STRING | keyword | sessionization, drill down |
 | searchQuery | STRING | standard analyzer | the query log, searchable |
@@ -251,8 +270,8 @@ Every signal is stored as one document with these fields. Built in fields live a
 | searchClickedDocId, searchSignalId, searchId | STRING | keyword | click linkage, saved search joins |
 | searchShownDocIds | list of STRING | stored only, at most 20 | impressions |
 | durationMs | NUMERIC | sortable | session length, dwell time |
-| tags.&lt;key&gt; | declared kind | keyword facet by default | application dimensions |
-| tags | sub document | stored | every tag, declared or not |
+| tags.&lt;key&gt; | indexed kind | keyword facet by default | indexed tags, the app's own report fields |
+| tags | sub document | stored | every tag, indexed or not |
 
 The `SignalField` enum carries each built in field's name and kind, so reports and custom searches can name fields without string literals.
 
@@ -274,7 +293,14 @@ Partitioning cannot be switched on for an existing single index of the same name
 
 ## Usage Reports
 
-`UsageReports` answers the usual questions with facet requests. Every report is scoped to one app and one `TimeRange`, from inclusive and to exclusive.
+`UsageReports` answers the usual questions with facet requests. Every report is scoped to one app and one `TimeRange`, from inclusive and to exclusive. Build ranges from dates in the index zone rather than by hand, since an end at the start of today silently drops today.
+
+```java
+UsageReport sinceLaunch = reports.of("shop", LocalDate.of(2026, 1, 1));      // start of that day in the index zone, up to now
+UsageReport september = reports.of("shop", YearMonth.of(2026, 9));           // one calendar month in the index zone
+TimeRange window = TimeRange.days(LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 15), zone);   // whole days, last day included
+TimeRange recent = TimeRange.lastDays(30);                                   // rolling, clock based
+```
 
 ```java
 UsageReports reports = new UsageReports(signals);
@@ -282,7 +308,7 @@ UsageReport shop = reports.of("shop", TimeRange.lastDays(30));
 
 long activeUsers = shop.activeUsers();                                        // distinct USER actors
 long everyone = shop.activeUsers(ActorType.USER, ActorType.ANONYMOUS);        // signed in and not
-List<DimensionCount> byCategory = shop.by("category");                        // a declared dimension
+List<DimensionCount> byCategory = shop.by("category");                        // an indexed tag
 List<DimensionCount> byClient = shop.by(SignalField.CLIENT);                  // a built in field
 List<DimensionCount> daily = shop.overTime(Bucket.DAY);                       // chronological, DAY, WEEK, or MONTH
 List<DimensionCount> topQueries = shop.topQueries();                          // normalized query text by frequency
@@ -292,7 +318,7 @@ long productsTouched = shop.distinct(Targets.DOCUMENT);                       //
 List<DimensionCount> perApp = reports.byApp(TimeRange.lastDays(30));          // the cross app rollup
 ```
 
-Each grouped report returns `DimensionCount(value, count)` rows by count descending. `by(String)` accepts a declared keyword facet dimension and `by(SignalField)` a built in keyword facet field.
+Each grouped report returns `DimensionCount(value, count)` rows by count descending. `by(String)` accepts an indexed keyword tag and `by(SignalField)` a built in keyword facet field. A tag that is not indexed, or is indexed as a number, throws and names the indexed keys.
 
 SYSTEM actors are excluded from every report. To see platform load next to usage:
 
@@ -300,7 +326,7 @@ SYSTEM actors are excluded from every report. To see platform load next to usage
 List<DimensionCount> load = shop.includingSystem().by(SignalField.ACTOR_TYPE);
 ```
 
-Counts are exact up to 50,000 values per dimension. A grouped report past that limit returns the top values. A distinct count or a tally past it throws instead of returning a truncated number. `maxFacetValues` raises or lowers the limit. Every value comes back in one response, so a higher limit costs response size on every report.
+Counts are exact up to 50,000 values per field. A grouped report past that limit returns the top values. A distinct count or a tally past it throws instead of returning a truncated number. `maxFacetValues` raises or lowers the limit. Every value comes back in one response, so a higher limit costs response size on every report.
 
 ```java
 UsageReports reports = new UsageReports(signals).maxFacetValues(200_000);
@@ -308,24 +334,45 @@ UsageReports reports = new UsageReports(signals).maxFacetValues(200_000);
 
 ## Per Actor Tallies
 
-`forActivity` narrows a report to one action, optionally on one target type. `forActor` narrows it to one actor. `tally` counts signals per actor for a list of activities, which is the usual activity table with one column per activity and one row per actor that did at least one of them.
+`forActivity` narrows a report to one action, optionally on one target type. `forActor` narrows it to one actor. `forTag` narrows it to one value of an indexed tag, and `forField` to one value of a built in keyword field such as the client. The narrowings stack, each at most once per field. `tally` counts signals per actor for a list of activities, which is the usual activity table with one column per activity and one row per actor that did at least one of them.
 
 ```java
 Activity projectsCreated = Activity.of(Actions.CREATE, Targets.PROJECT);
 Activity recordsVisited = Activity.of(Actions.VISIT, Targets.RECORD);
 Activity logins = Activity.of(Actions.LOGIN);                                  // any target or none
 
-List<ActorActivity> rows = shop.tally(projectsCreated, recordsVisited, logins);  // by total descending
-for (ActorActivity row : rows) {
+List<ActorTally<Activity>> rows = shop.tally(projectsCreated, recordsVisited, logins);  // by total descending
+for (ActorTally<Activity> row : rows) {
     System.out.println(row.actorId() + " " + row.count(projectsCreated) + " " + row.count(recordsVisited) + " " + row.count(logins));
 }
 
 List<DimensionCount> creators = shop.forActivity(projectsCreated).by(SignalField.ACTOR_ID);   // one column
-List<ActorActivity> oneRow = shop.forActor("u-1042").tally(projectsCreated, recordsVisited);      // one row, empty when the actor did none
+List<ActorTally<Activity>> oneRow = shop.forActor("u-1042").tally(projectsCreated, recordsVisited);      // one row, empty when the actor did none
 long recordsSeen = shop.forActor("u-1042").distinct(Targets.RECORD, Actions.VISIT);            // distinct records for one actor
+List<ActorTally<Activity>> inShoes = shop.forTag("category", "shoes").tally(projectsCreated, logins);   // the table inside one tag value
 ```
 
 A tally runs one search per activity, so its cost does not grow with the number of actors. It counts signals, so a bulk signal counts once. Distinct targets per actor go through `forActor` and `distinct`. `forActor` takes the real actor id and maps it the way the client stored it, so it works under a pseudonymizing `ActorIdMapper`. The `actorId` on each row is the stored id, so under `hmacSha256` it is the pseudonym and cannot be turned back into the real id. Keep the activities disjoint. An activity without a target type overlaps every activity of that action, and the total that orders the rows is the sum of the columns. A report narrows to one activity and one actor at most once, so `tally` runs on a report that is not already narrowed by `forActivity`. A tally with at least `maxFacetValues` actors for one activity throws rather than drop actors.
+
+## Per Actor Tallies by Tag
+
+`tallyBy` counts signals per actor and per value of an indexed keyword tag, or of a built in keyword facet field such as the client or a time bucket. Narrow by `forActivity` first to break one activity down. Each row is an `ActorTally<String>(actorId, counts)` with one entry per value the actor has a signal for, by total descending. `tally` returns the same record as `ActorTally<Activity>`, so both tables share `count(column)` and `total()`.
+
+```java
+UsageReport adds = shop.forActivity(Activity.of(Actions.CREATE, Targets.DATASET));
+
+List<ActorTally<String>> rows = adds.tallyBy("category");                    // who created what, per category
+for (ActorTally<String> row : rows) {
+    for (var entry : row.counts().entrySet()) {
+        System.out.println(row.actorId() + " added " + entry.getValue() + " " + entry.getKey());
+    }
+}
+
+List<ActorTally<String>> perDay = adds.tallyBy(Bucket.DAY.field());          // per actor per day
+List<ActorTally<String>> perClient = shop.tallyBy(SignalField.CLIENT);       // every signal, per actor per client
+```
+
+A tally by tag runs one search per actor or one per value, whichever there are fewer of, plus two to count them, so its cost is `2 + min(actors, values)`. It throws past `maxTallySearches` searches, 1,000 by default, naming both cardinalities, and past `maxFacetValues` actors or values. Narrow the report, raise the cap on `UsageReports`, or run a custom search for a wider table. A report narrowed by `forActor` or by `forTag` on the same tag refuses `tallyBy`, since one row or one column is a `by`. A list tag counts a signal once per element, so a row's total can exceed the actor's signals.
 
 ## Custom Queries
 
