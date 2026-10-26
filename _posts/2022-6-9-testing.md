@@ -43,6 +43,7 @@ connections:
     port: 32191
   - name: production
     serverAddress: 10.0.0.50
+    routingEnabled: true
 ```
 
 | Field | Required | Default | Description |
@@ -50,6 +51,7 @@ connections:
 | name | yes | | Unique connection identifier |
 | serverAddress | yes | | Hostname or IP address |
 | port | no | 32191 | Zulia gRPC port |
+| routingEnabled | no | false | Discover the cluster nodes and send each request to the node that owns the shard. Leave off when serverAddress is a port forward or a load balancer, otherwise requests go to the cluster's own addresses |
 
 ### Indexes
 

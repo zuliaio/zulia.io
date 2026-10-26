@@ -15,7 +15,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:5.5.2'
+    implementation 'io.zulia:zulia-data:5.6.0'
 }
 ```
 
@@ -24,7 +24,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>5.5.2</version>
+    <version>5.6.0</version>
 </dependency>
 ```
 
@@ -91,7 +91,7 @@ try (SpreadsheetSource<?> source = SpreadsheetSourceFactory.fromFile("/data/inpu
 
 ### Cell Parsers
 
-`CellParsers` holds the boolean parser, the date parser and the date formatter a source applies to text cells and to the elements of a delimited list. `withParsers(CellParsers)` replaces all three on any source config. `withBooleanParser` and `withDateParser` replace one. The default date parser reads ISO date time with an offset or zone id, such as `2024-12-18T08:00:00Z[Etc/UTC]`, which is what the targets write.
+`CellParsers` holds the boolean parser, the date parser, the local date parser, the local date time parser and the date formatter a source applies to text cells and to the elements of a delimited list. `withParsers(CellParsers)` replaces all five on any source config. `withBooleanParser`, `withDateParser`, `withLocalDateParser` and `withLocalDateTimeParser` replace one. The default date parser reads ISO date time with an offset or zone id, such as `2024-12-18T08:00:00Z[Etc/UTC]`, which is what the targets write for a `Date`. The default local parsers read a plain ISO date such as `2024-05-01` for `getLocalDate` and an ISO local date time such as `2024-05-01T13:45:30` for `getLocalDateTime`, which is what the targets write for a `LocalDate` and a `LocalDateTime`.
 
 | Parser | Reads |
 |--------|-------|
@@ -118,6 +118,9 @@ for (SpreadsheetRecord record : source) {
     Double score = record.getDouble("score");
     Boolean active = record.getBoolean("active");
     Date created = record.getDate("created");
+    Instant createdAt = record.getInstant("created");
+    LocalDate day = record.getLocalDate("day");
+    LocalDateTime at = record.getLocalDateTime("at");
 
     // By column index (0-based)
     String first = record.getString(0);
@@ -129,6 +132,7 @@ for (SpreadsheetRecord record : source) {
     // Lists from delimited cell values (default delimiter: ;)
     List<String> tags = record.getList("tags", String.class);
     List<Integer> ids = record.getList("ids", Integer.class);
+    List<LocalDate> days = record.getList("days", LocalDate.class);
 
     // Full row as string array
     String[] row = record.getRow();
@@ -165,7 +169,9 @@ try (CSVSource source = CSVSource.withConfig(config)) {
 | `withListDelimiter(char)` | `;` | Delimiter for list values within a cell |
 | `withBooleanParser(Function)` | true/t/yes/y/1 | Custom boolean parsing |
 | `withDateParser(Function)` | ISO_DATE_TIME | Custom date parsing |
-| `withParsers(CellParsers)` | `CellParsers.defaults()` | Boolean parser, date parser and date formatter in one call |
+| `withLocalDateParser(Function)` | ISO_LOCAL_DATE | Custom calendar day parsing for `getLocalDate` |
+| `withLocalDateTimeParser(Function)` | ISO_LOCAL_DATE_TIME | Custom wall clock time parsing for `getLocalDateTime` |
+| `withParsers(CellParsers)` | `CellParsers.defaults()` | Boolean, date, local date and local date time parsers and the date formatter in one call |
 
 ## TSV Source
 
@@ -207,7 +213,9 @@ try (ExcelSource source = ExcelSource.withConfig(config)) {
 | `withListDelimiter(char)` | `;` | Delimiter for list values within a cell |
 | `withBooleanParser(Function)` | true/t/yes/y/1 | Custom boolean parsing for text cells and list elements |
 | `withDateParser(Function)` | ISO_DATE_TIME | Custom date parsing for text cells and list elements |
-| `withParsers(CellParsers)` | `CellParsers.defaults()` | Boolean parser, date parser and date formatter in one call, for text cells and list elements |
+| `withLocalDateParser(Function)` | ISO_LOCAL_DATE | Custom calendar day parsing for text cells and list elements. A date cell is read as its calendar day directly |
+| `withLocalDateTimeParser(Function)` | ISO_LOCAL_DATE_TIME | Custom wall clock time parsing for text cells and list elements. A date cell is read as its wall clock time directly |
+| `withParsers(CellParsers)` | `CellParsers.defaults()` | Boolean, date, local date and local date time parsers and the date formatter in one call, for text cells and list elements |
 | `withExcelCellHandler(handler)` | DefaultExcelCellHandler | Custom cell type conversion |
 | `setOpenHandling(handling)` | FIRST_SHEET | FIRST_SHEET or ACTIVE_SHEET |
 
@@ -330,17 +338,24 @@ try (CSVTarget target = CSVTarget.withDefaultsFromFile("/data/out.csv", true, he
 |------|---------------|
 | Number (float/double) | 3 decimal places |
 | Date | ISO_DATE_TIME |
+| LocalDate | ISO_LOCAL_DATE, such as `2024-05-01`. A source reads it back with `getLocalDate` |
+| LocalDateTime | ISO_LOCAL_DATE_TIME, such as `2024-05-01T13:45:30`. A source reads it back with `getLocalDateTime` |
+| Instant, ZonedDateTime, OffsetDateTime | Written as the Date of that instant, so ISO_DATE_TIME in the system zone |
 | Boolean | "True" / "False" |
 | Collection | Joined with list delimiter |
+| Array | Joined with list delimiter, like a Collection, primitive arrays included |
+| Map | JSON text, as `Document.toJson` writes it, which `Document.parse` reads back |
 | Link | href value only |
 
 ### Custom Type Handlers
 ```java
 CSVTargetConfig config = CSVTargetConfig.from(dataOutputStream)
-    .withNumberTypeHandler((writer, value) -> writer.addField(String.format("%.1f", value.doubleValue())))
-    .withDateTypeHandler((writer, value) -> writer.addField(new SimpleDateFormat("yyyy-MM-dd").format(value)))
-    .withBooleanTypeHandler((writer, value) -> writer.addField(value ? "Y" : "N"));
+    .withNumberTypeHandler((writer, value) -> writer.add(String.format("%.1f", value.doubleValue())))
+    .withDateTypeHandler((writer, value) -> writer.add(value.toInstant().atOffset(ZoneOffset.UTC).toLocalDate().toString()))
+    .withBooleanTypeHandler((writer, value) -> writer.add(value ? "Y" : "N"));
 ```
+
+The date handler is a `DateTypeHandler` and covers `Date`, `LocalDate` and `LocalDateTime`. A lambda only sees a `Date`, so a `LocalDate` reaches it as the start of that day in UTC and a `LocalDateTime` as that wall clock time in UTC, and the lambda should format in UTC as above so the day does not shift. To write the local values differently, implement `DateTypeHandler` as a class and override its `LocalDate` and `LocalDateTime` methods. The default `DateCSVWriter` does this and sets the local formatters with `withLocalDateFormatter` and `withLocalDateTimeFormatter`. A Map is written by the map handler, `withMapHandler`, which writes JSON by default.
 
 ## Excel Target
 
@@ -379,11 +394,16 @@ try (ExcelTarget target = ExcelTarget.withConfig(config)) {
 |------|---------------|
 | String | Plain text (truncated at 32K chars) |
 | Number (float/double) | 0.00 format |
-| Date | m/d/yy |
+| Date | Date cell, m/d/yy |
+| LocalDate | Date cell, m/d/yy, stored as that calendar day with no time zone shift |
+| LocalDateTime | Date cell, m/d/yy h:mm, stored as that wall clock time with no time zone shift |
+| Instant, ZonedDateTime, OffsetDateTime | Date cell, m/d/yy, written as the Date of that instant |
 | Boolean | Native boolean cell |
 | Link | Blue underlined hyperlink |
 | Header | Bold, centered, 10pt |
 | Collection | Joined with list delimiter |
+| Array | Joined with list delimiter, like a Collection, primitive arrays included |
+| Map | Text cell holding JSON, as `Document.toJson` writes it |
 
 ### Custom Cell Handlers
 ```java

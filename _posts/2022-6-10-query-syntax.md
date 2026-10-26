@@ -257,6 +257,8 @@ They can be done as a separate query since 1.7.35 (TermQuery in Java) and inline
   * searches field id for analyzed terms abc, xyz, or rrr.  If id field was analyzed as lower case keyword this would match ids ABC or Xyz.
 * `mainTopic,subTopic:zl:tq("Lung Cancer" "Brain Cancer" Diabetes)`  
   * searches field mainTopic and subTopic for terms "Lung Cancer" "Brain Cancer" Diabetes, returning documents if either field matched any term.  In this case topics and subTopics are assumed to be keyword fields.
+* `doi:zl:tq("10.1000\/jrnl.2011-0102-a")`
+  * since 5.6.0 values inside `zl:tq(...)` and `zl:ns(...)` follow the same escaping rules as any other term. The escaped form, the quoted form `zl:tq("10.1000/jrnl.2011-0102-a")` and the quoted escaped form all search the same term. Write a literal backslash as `\\`. An unquoted value still cannot contain a bare `/`, which starts a regular expression.
 
 ## Geo Point Queries
 
