@@ -31,10 +31,25 @@ socials:
 # build settings
 markdown: kramdown
 
+# Theme files that are not site pages, plus the Jekyll defaults this list replaces
+exclude:
+  - README.md
+  - CONTRIBUTING.md
+  - LICENSE.md
+  - forty_jekyll_theme.gemspec
+  - commit.md
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+
 sass:
   style: compressed
 
 # Version info
-zulia_version: 5.6.0
+zulia_version: 5.6.1
 lucene_version: 10.5.2
 java_version: 25

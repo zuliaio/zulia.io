@@ -4,8 +4,6 @@ title: Testing
 description: Validate search results with the Zulia test framework
 ---
 
-# Zulia Test Framework
-
 The `zuliatest` command is a YAML-driven testing framework for validating Zulia search results. It executes queries against a Zulia cluster and evaluates JavaScript expressions to assert expected results, producing a CSV report.
 
 This is useful for search quality regression testing, CI/CD integration, and validating index data after migrations.
@@ -25,12 +23,20 @@ zuliatest --testConfig /path/to/test_config.yaml --testOutput /path/to/results.c
 
 ### Exit Codes
 * `0` - All tests passed
-* `1` - One or more tests failed
+* `1` - One or more tests failed. A runtime error, such as a connection failure or a bad expression, also exits 1
 * `9` - Configuration file not found or not readable
 
 ## YAML Configuration
 
 The test configuration has four main sections: connections, indexes, searches, and tests.
+
+A schema is published for editor validation and completion. Put this line at the top of the config to use it:
+
+```yaml
+# yaml-language-server: $schema=https://zulia.io/schema/zulia_testing_schema-1.1.json
+```
+
+Schema 1.1 lists `queries`, `topN`, `logSearches` and `logSearchResults` as required, so a schema validating editor may flag their absence even though the runner accepts a config without them.
 
 ### Connections
 
@@ -110,7 +116,7 @@ searches:
 |-------|----------|---------|-------------|
 | name | yes | | Unique identifier, used in test expressions |
 | index | yes | | References an index name |
-| queries | no | | List of query clauses |
+| queries | no | | List of query clauses. The runner runs the search without a query clause when omitted |
 | amount | no | 0 | Number of documents to return (0 = count only) |
 | documentFields | no | | Specific fields to retrieve from documents |
 | facets | no | | Count facet configurations |
@@ -131,7 +137,7 @@ searches:
 | Field | Required | Default | Description |
 |-------|----------|---------|-------------|
 | field | yes | | Facet field name |
-| topN | no | 0 | Number of top facet values to return |
+| topN | no | 10 | Number of top facet values to return. 0 or omitted means unset and the server default of 10 applies |
 
 #### Stat Facet Fields
 
@@ -139,7 +145,7 @@ searches:
 |-------|----------|-------------|
 | facetField | yes | Field to facet on |
 | numericField | yes | Numeric field for statistics |
-| topN | no | Number of top facet values |
+| topN | no | Number of top facet values. 0 or omitted means unset and the server default of 10 applies |
 
 #### Numeric Stat Fields
 
@@ -167,7 +173,7 @@ tests:
 
 ### Logging
 
-Optional flags for debugging.
+Optional flags for debugging. The runner treats both as false when omitted.
 
 ```yaml
 logSearches: true       # Log search queries as they execute
@@ -231,10 +237,9 @@ cancerDocs.numStat["year"].percentiles[1].value > 2015
 
 ## CSV Output
 
-The output CSV has two columns: `testId` and `result`.
+The output CSV has one row per test with two columns, the test name and `PASS` or `FAIL`. There is no header row.
 
 ```
-testId,result
 hasResults,PASS
 mostHaveTitles,PASS
 topYearRecent,FAIL

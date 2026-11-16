@@ -4,8 +4,6 @@ title: Data Library
 description: Standalone library for reading and writing CSV, TSV, Excel, and JSON data
 ---
 
-# Zulia Data Library
-
 The `zulia-data` module is a standalone Java library for reading and writing CSV, TSV, Excel, and JSON data. It provides a unified API with format auto-detection, configurable type handling, and streaming support for large files.
 
 ## Gradle
@@ -15,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-data:5.6.0'
+    implementation 'io.zulia:zulia-data:5.6.1'
 }
 ```
 
@@ -24,7 +22,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-data</artifactId>
-    <version>5.6.0</version>
+    <version>5.6.1</version>
 </dependency>
 ```
 
@@ -103,7 +101,8 @@ try (SpreadsheetSource<?> source = SpreadsheetSourceFactory.fromFile("/data/inpu
 
 ```java
 CellParsers plainDates = CellParsers.defaults().withDateParser(CellParsers.flexibleIsoDateParser(ZoneId.of("America/New_York")));
-CSVSourceConfig config = CSVSourceConfig.from(input).withHeaders().withParsers(plainDates);
+CSVSourceConfig config = CSVSourceConfig.from(input);
+config.withHeaders().withParsers(plainDates);
 ```
 
 ## Record Access
@@ -137,8 +136,8 @@ for (SpreadsheetRecord record : source) {
     // Full row as string array
     String[] row = record.getRow();
 
-    // Available headers
-    SequencedSet<String> headers = record.getHeaders();
+    // Available headers, read from the source
+    SequencedSet<String> headers = source.getHeaders();
 }
 ```
 
@@ -146,10 +145,8 @@ for (SpreadsheetRecord record : source) {
 
 ```java
 FileDataInputStream input = FileDataInputStream.from("/data/test.csv");
-CSVSourceConfig config = CSVSourceConfig.from(input)
-    .withHeaders()
-    .withDelimiter(',')
-    .withListDelimiter(';');
+CSVSourceConfig config = CSVSourceConfig.from(input).withDelimiter(',');
+config.withHeaders().withListDelimiter(';');
 
 try (CSVSource source = CSVSource.withConfig(config)) {
     for (CSVRecord record : source) {
@@ -167,7 +164,7 @@ try (CSVSource source = CSVSource.withConfig(config)) {
 | `withHeaders(HeaderConfig)` | no headers | Headers with explicit duplicate, blank and trailing blank handling |
 | `withDelimiter(char)` | `,` | Field delimiter |
 | `withListDelimiter(char)` | `;` | Delimiter for list values within a cell |
-| `withBooleanParser(Function)` | true/t/yes/y/1 | Custom boolean parsing |
+| `withBooleanParser(Function)` | true/t/yes/y/1, false/f/no/n/0, null otherwise | Custom boolean parsing |
 | `withDateParser(Function)` | ISO_DATE_TIME | Custom date parsing |
 | `withLocalDateParser(Function)` | ISO_LOCAL_DATE | Custom calendar day parsing for `getLocalDate` |
 | `withLocalDateTimeParser(Function)` | ISO_LOCAL_DATE_TIME | Custom wall clock time parsing for `getLocalDateTime` |
@@ -176,7 +173,8 @@ try (CSVSource source = CSVSource.withConfig(config)) {
 ## TSV Source
 
 ```java
-TSVSourceConfig config = TSVSourceConfig.from(input).withHeaders();
+TSVSourceConfig config = TSVSourceConfig.from(input);
+config.withHeaders();
 try (TSVSource source = TSVSource.withConfig(config)) {
     for (TSVRecord record : source) {
         String value = record.getString("column");
@@ -211,7 +209,7 @@ try (ExcelSource source = ExcelSource.withConfig(config)) {
 | `withStrictHeaders()` | no headers | Headers with no duplicates or blanks allowed |
 | `withHeaders(HeaderConfig)` | no headers | Headers with explicit duplicate, blank and trailing blank handling |
 | `withListDelimiter(char)` | `;` | Delimiter for list values within a cell |
-| `withBooleanParser(Function)` | true/t/yes/y/1 | Custom boolean parsing for text cells and list elements |
+| `withBooleanParser(Function)` | true/t/yes/y/1, false/f/no/n/0, null otherwise | Custom boolean parsing for text cells and list elements |
 | `withDateParser(Function)` | ISO_DATE_TIME | Custom date parsing for text cells and list elements |
 | `withLocalDateParser(Function)` | ISO_LOCAL_DATE | Custom calendar day parsing for text cells and list elements. A date cell is read as its calendar day directly |
 | `withLocalDateTimeParser(Function)` | ISO_LOCAL_DATE_TIME | Custom wall clock time parsing for text cells and list elements. A date cell is read as its wall clock time directly |
@@ -235,7 +233,8 @@ try (ExcelSource source = ExcelSource.withConfig(config)) {
 
     // Query sheet info (these methods are on ExcelSource, not ExcelSourceConfig)
     int count = source.getNumberOfSheets();
-    String name = source.getActiveSheetName();
+    // The sheet the workbook was saved with as active. switchSheet does not change it
+    String saved = source.getActiveSheetName();
 }
 ```
 
@@ -269,8 +268,8 @@ try (JsonLineDataSource source = JsonLineDataSource.withConfig(config)) {
 ### Error Handling
 ```java
 // Log and skip bad lines instead of throwing
-JsonLineSourceConfig config = JsonLineSourceConfig.from(dataInputStream)
-    .withExceptionHandler(new LoggingJsonLineParseExceptionHandler(log));
+JsonLineSourceConfig config = JsonLineSourceConfig.from(dataInputStream);
+config.withExceptionHandler(new LoggingJsonLineParseExceptionHandler(log));
 ```
 
 # Writing Data (Targets)
@@ -340,7 +339,7 @@ try (CSVTarget target = CSVTarget.withDefaultsFromFile("/data/out.csv", true, he
 | Date | ISO_DATE_TIME |
 | LocalDate | ISO_LOCAL_DATE, such as `2024-05-01`. A source reads it back with `getLocalDate` |
 | LocalDateTime | ISO_LOCAL_DATE_TIME, such as `2024-05-01T13:45:30`. A source reads it back with `getLocalDateTime` |
-| Instant, ZonedDateTime, OffsetDateTime | Written as the Date of that instant, so ISO_DATE_TIME in the system zone |
+| Instant, ZonedDateTime, OffsetDateTime | Written as the Date of that instant, so ISO_DATE_TIME in the system zone with millisecond precision |
 | Boolean | "True" / "False" |
 | Collection | Joined with list delimiter |
 | Array | Joined with list delimiter, like a Collection, primitive arrays included |
@@ -367,7 +366,7 @@ ExcelTargetConfig config = ExcelTargetConfig.from(FileDataOutputStream.from("/da
 try (ExcelTarget target = ExcelTarget.withConfig(config)) {
     target.appendValue("John");
     target.appendValue(99.5);
-    target.appendValue(new Link("https://example.com", "Example"));
+    target.appendValue(new Link("Example", "https://example.com"));
     target.finishRow();
 }
 ```
@@ -397,7 +396,7 @@ try (ExcelTarget target = ExcelTarget.withConfig(config)) {
 | Date | Date cell, m/d/yy |
 | LocalDate | Date cell, m/d/yy, stored as that calendar day with no time zone shift |
 | LocalDateTime | Date cell, m/d/yy h:mm, stored as that wall clock time with no time zone shift |
-| Instant, ZonedDateTime, OffsetDateTime | Date cell, m/d/yy, written as the Date of that instant |
+| Instant, ZonedDateTime, OffsetDateTime | Date cell, m/d/yy, written as the Date of that instant with millisecond precision |
 | Boolean | Native boolean cell |
 | Link | Blue underlined hyperlink |
 | Header | Bold, centered, 10pt |
@@ -412,17 +411,23 @@ ExcelTargetConfig config = ExcelTargetConfig.from(dataOutputStream)
         cellRef.cell().setCellValue(value.doubleValue());
         // Access WorkbookHelper for custom styles
         CellStyle style = cellRef.workbookHelper().createOrGetStyle("custom", s -> {
-            s.setDataFormat(cellRef.workbookHelper().getWorkbook().createDataFormat().getFormat("#,##0.00"));
+            s.setDataFormat(cellRef.cell().getSheet().getWorkbook().createDataFormat().getFormat("#,##0.00"));
         });
         cellRef.cell().setCellStyle(style);
     });
 ```
 
 ### Red Bold Cell Handler
-A built-in handler for writing red bold formatted cells, useful for emphasizing specific values:
+A built-in handler for writing red bold formatted cells, useful for emphasizing specific values. Registering it on the config does not change how plain values are written. The handler applies only to a value passed with it explicitly:
 ```java
 ExcelTargetConfig config = ExcelTargetConfig.from(dataOutputStream)
     .withRedBoldHandler(new RedBoldCellHandler());
+
+try (ExcelTarget target = ExcelTarget.withConfig(config)) {
+    target.appendValue("plain text");
+    target.appendValue(config.getRedBoldHandler(), "text");
+    target.finishRow();
+}
 ```
 
 ### Merged Regions

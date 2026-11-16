@@ -4,15 +4,13 @@ title: Query Syntax
 description: Explaining the Zulia query syntax based on Lucene.
 ---
 
-# Query Syntax
-
-Zulia's query parser is based on the [lucene flexible query parser](https://lucene.apache.org/core/10_4_0/queryparser/org/apache/lucene/queryparser/flexible/standard/StandardQueryParser.html).  The documentation here is slightly modified with some zulia specific tweaks and improvements.
+Zulia's query parser is based on the [lucene flexible query parser](https://lucene.apache.org/core/10_5_2/queryparser/org/apache/lucene/queryparser/flexible/standard/StandardQueryParser.html).  The documentation here is slightly modified with some zulia specific tweaks and improvements.
 
 ### Supported query syntax
 A query consists of clauses, field specifications, grouping and Boolean operators and interval functions. We will discuss them in order.
 
 ## Basic clauses
-A query must contain one or more clauses. A clause can be a literal term, a phrase, a wildcard expression or other expression that
+A query must contain one or more clauses. A clause can be a literal term, a phrase, a wildcard expression, a regular expression or a fuzzy term.
 
 The following are some examples of simple one-clause queries:
 
@@ -48,11 +46,22 @@ The following are some examples of field-prefixed clauses:
 * `*Title:(die AND hard)`
   * documents containing die AND hard in an indexed field matching *Title, for example: shortTitle, longTitle
 
+* `title,abstract:(alzheimer* OR "alzheimer's disease")`
+  * prefix wildcard or exact phrase in either the title or abstract field. Apostrophes inside a quoted phrase need no escaping.
+
+* `country_code:(DE OR FR OR IT)`
+  * one field, several accepted values
+
+* `grantOrganizationBroad:"National Institute on Aging"`
+  * exact value in a keyword field. Quote any value with spaces.
+
+Fields analyzed as `keyword` hold the complete original value and are case sensitive, so the value must match exactly: `grantOrganizationBroad:"National Institute on Aging"` matches but `grantOrganizationBroad:aging` and `grantOrganizationBroad:"national institute on aging"` do not. An abbreviation such as `NIA` matches only if the documents store that abbreviation. When unsure which values a keyword field holds, look at its terms first. Fields analyzed as `standard` or `lowercase` are tokenized, so single words and phrases match case insensitively.
+
 ## Boolean operators and grouping
 
 The default operator can be set on a query and defaults to OR.  Any terms or clauses that are not joined with an explicit boolean operator are joined with the default.
 
-NOTE: The boolean operators in Lucene do not use the normal precedence rules without so parentheses so please use parentheses when using multiple boolean operators.
+NOTE: The boolean operators in Lucene do not use the normal precedence rules without parentheses, so please use parentheses when using multiple boolean operators.
 
 * `Spain Germany`
    * with Default Operator OR --> `Spain OR Germany`
@@ -87,7 +96,7 @@ You can combine clauses using Boolean AND, OR and NOT operators to form more com
   * if the default operator for the query is AND, documents containing all of *pass*, *fail* or *skip* in the title field.
 
 * `title:(+test +result unknown)`
-  * *+* indicates or phrase is required 
+  * *+* indicates the term or phrase is required
   * if the default operator for the query is OR (default), documents containing both *test* and *result* in the title field.  The *unknown* term will be used for scoring
   * if the default operator for the query is AND, the + for required does not change the query and gives documents containing both *test*, *result*, and *unknown* in the title field.
 
@@ -96,6 +105,27 @@ You can combine clauses using Boolean AND, OR and NOT operators to form more com
 
 
 Note the Boolean operators must be written in all caps, otherwise they are parsed as regular terms.
+
+## Match all and negation
+
+* `*:*`
+  * the match all. It matches every document. Use it when the request has no search terms, for example when only filters or facets are wanted.
+
+* `*`
+  * not a match all. A bare `*` has no field, so it is expanded over the default search fields and matches documents with a value in at least one of them (see field presence below). Documents with none of those fields are left out, so use `*:*` when there are no search terms.
+
+* `NOT country_code:DE`
+  * a purely negative query is allowed and matches every document that is not excluded
+
+* `*:* AND NOT country_code:DE`
+  * same as above, written with an explicit match all
+
+* `feature_class:P AND -country_code:DE`
+  * populated places outside Germany
+
+## Not query syntax
+
+Sorting, the number of results, the fields to return, facets and highlighting are request options, not part of the query string. There is no `sort:`, `limit:`, `rows:` or `fields:` syntax. Text such as `sort:name` is parsed as an ordinary term in a field named sort and silently changes the result, so leave it out of the query and set the option on the request instead.
 
 ## Range operators
 
@@ -112,6 +142,18 @@ To search for ranges of textual or numeric values, use square or curly brackets,
 
 * `score>3.0 AND score<=5.0`
    * alternative syntax for ranges; select document whose score is greater 3.0 and less than or equal to 5.0
+   * the comparison form has no colon. `score:>3.0` and `score:>=3.0` are syntax errors. Write `score>3.0` or `score:{3.0 TO *]`.
+
+Numeric phrases map to ranges like this:
+
+* more than 500000: `population:{500000 TO *]` or `population>500000`
+* at least 500000: `population:[500000 TO *]` or `population>=500000`
+* less than 1000: `population:[* TO 1000}` or `population<1000`
+* at most 1000: `population:[* TO 1000]` or `population<=1000`
+* between 2015 and 2020 inclusive: `fy:[2015 TO 2020]`
+* 2020 or later: `fy:[2020 TO *]`
+* before 2020: `fy:[* TO 2020}`
+* exactly 2020: `fy:2020`
 
 * `pubDate:[2022-01-01 TO 2022-02-01]`
   * Date range example
@@ -124,7 +166,7 @@ To search for ranges of textual or numeric values, use square or curly brackets,
 Dates can be represented the following formats:
   * `yyyy` 
     * ex. 2021
-  * `yyyyy-MM` or `yyyy/MM`
+  * `yyyy-MM` or `yyyy/MM`
     * ex. 2020-05 or 2020/05
   * `yyyy-MM-dd` or `yyyy/MM/dd`
     * ex. 2004-04-01 or 2004/04/01
@@ -132,7 +174,7 @@ Dates can be represented the following formats:
     * ex. 2012-08-03T11:59:00.000Z or 2012/08/03T11:59:00.000Z
     * the zone offset is optional; when omitted the time is assumed to be UTC (ex. 2012-08-03T11:59:00)
 
-Range query dates with / do not special handling, but otherwise they need to be quoted or escaped
+Range query dates with / do not need special handling, but otherwise they need to be quoted or escaped
 * ex:
   * `date:"2012/02/01"`
   * `date:[2012/02/02 TO 2023/03/04]`
@@ -153,7 +195,26 @@ Sample queries
 * `date:[2022-04 TO 2022-05}`
   * equivalent to date:[2022-04-01T00:00:00.000Z TO 2022-05-01T00:00:00.000Z}
 * `date:{2022-04 TO 2022-05}`
-  * equivalent to date:{2022-04-01T23:59:59.999Z TO 2022-05-01T00:00:00.000Z}
+  * equivalent to date:{2022-04-30T23:59:59.999Z TO 2022-05-01T00:00:00.000Z}
+
+## Worked examples
+
+Each example assumes the field names shown exist in the index with the given type.
+
+* "populated places in Germany with more than 500000 people" with keyword fields feature_class and country_code and a numeric field population
+  * `feature_class:P AND country_code:DE AND population:{500000 TO *]`
+* "cities in France or Spain with at least one million people"
+  * `country_code:(FR OR ES) AND population:[1000000 TO *]`
+* "grants about Alzheimer's disease from fiscal year 2020 on" with analyzed fields title and abstract and a numeric field fy
+  * `title,abstract:(alzheimer* OR "alzheimer's disease") AND fy:[2020 TO *]`
+* "grants funded by the National Institute on Aging between 2015 and 2020" with a keyword field grantOrganizationBroad
+  * `grantOrganizationBroad:"National Institute on Aging" AND fy:[2015 TO 2020]`
+* "articles published in March 2022 that mention CRISPR in the title but not in mice" with a date field pubDate
+  * `title:crispr AND NOT title:mice AND pubDate:2022-03`
+* "anything except closed tickets" with a keyword field status
+  * `NOT status:closed`
+* "documents with a short title, under 20 characters"
+  * `|title|:[* TO 20}`
 
 ## Length Operations
 
@@ -163,9 +224,7 @@ Zulia indexes string fields with character length information of the input strin
   * searches for titles with character length between 10 and 20 inclusive
 
 * `|||authors|||:4`
-  * finds documents where authors list contains four items, i.e. *authors: ["Tom","Sally","Bob", "Jen]*
-
-* 
+  * finds documents where authors list contains four items, i.e. *authors: ["Tom","Sally","Bob", "Jen"]*
 
 ## Field presence and malformed values
 
@@ -217,7 +276,7 @@ A minimum should match can be set on the query which is equivalent to wrapping t
   * sub-clauses of a Boolean query can themselves be complex queries; here the min-should-match selects documents that match at least two of the provided three sub-clauses.
   * also can be written as `((yellow OR blue) crab fish)~2`
 
-**Note:** Inside minimum-should-match groups, implicit whitespace between terms is treated as OR regardless of the global default operator setting. Explicit `AND`, `+`, `-`, and `NOT` modifiers within the group are preserved. Similarly, setting `minimumNumberShouldMatch` on a query forces the default operator to OR for that query.
+**Note:** Inside minimum-should-match groups, implicit whitespace between terms is treated as OR regardless of the global default operator setting. Explicit `AND`, `+`, `-`, and `NOT` modifiers within the group are preserved. Similarly, setting `minimumNumberShouldMatch` to a value greater than 1 on a query forces the default operator to OR for that query. A value of 1 or less leaves the query unchanged.
 
 
 
@@ -232,7 +291,7 @@ Interval functions are a powerful tool to express search needs in terms of one o
 
 * Fields indexed with the name `fn` (not recommended) can be searched by setting fn as one of the default search fields but not by simply prefixing the query with the field name.  To use prefix a term or term grouping, use the multi field syntax with a blank additional field like `fn,:someTerm`.
 
-Please refer to the [interval functions package](https://lucene.apache.org/core/10_4_0/queryparser/org/apache/lucene/queryparser/flexible/standard/nodes/intervalfn/package-summary.html) for more information on which functions are available and how they work.
+Please refer to the [interval functions package](https://lucene.apache.org/core/10_5_2/queryparser/org/apache/lucene/queryparser/flexible/standard/nodes/intervalfn/package-summary.html) for more information on which functions are available and how they work.
 
 
 # Zulia specific query syntax
@@ -241,20 +300,22 @@ Please refer to the [interval functions package](https://lucene.apache.org/core/
 ## Numeric Set
 Numeric set queries are more efficient for sets of numbers than a standard filter or scored query. They work on integer, long, float, and double fields.
 They can be done as a separate query since 2.7.0 (NumericSetQuery in Java) and inline with a query using the syntax below since 3.4.1.
+`zl:numericSet(...)` is an alias for `zl:ns(...)` and is the form printed in debug logs.
 * `intField:zl:ns(10 4 25)`
   * searches intField for documents containing any of the numbers 4,10,25
 * `intField1,intField2:zl:ns(10 4 25)`
   * searches both intField1 and intField2 for documents containing any of the numbers 4,10,25
 * `zl:ns(1 2 3 4)`
-  * searches the default search fields for documents containing any of the numbers 4,10,25 (all default search fields must be numeric)
+  * searches the default search fields for documents containing any of the numbers 1,2,3,4 (all default search fields must be numeric)
 
 
 ## Terms In Set Query
-Term in set queries are a more efficient way to search a set of terms as they appear in the search index (tokenized and filtered for non keyword analyzers). If a keyword analyzer is used terms will be case-sensitive and need to be a complete match.  
+Term in set queries are a more efficient way to search a set of terms as they appear in the search index. The terms are not analyzed. Each one is matched verbatim against the indexed terms, so for a lowercasing analyzer give the lowercase form, and for a keyword analyzer give the complete original value with its exact case. `country_code:zl:tq(de fr it)` matches a lowercased field while `country_code:zl:tq(DE FR IT)` matches nothing.
 They can be done as a separate query since 1.7.35 (TermQuery in Java) and inline with a query using the syntax below since 3.4.1.
+`zl:termQuery(...)` is an alias for `zl:tq(...)` and is the form printed in debug logs.
 
 * `id:zl:tq(abc 123 xyz rrr)`
-  * searches field id for analyzed terms abc, xyz, or rrr.  If id field was analyzed as lower case keyword this would match ids ABC or Xyz.
+  * searches field id for the terms abc, 123, xyz, or rrr. The values are not analyzed and are matched verbatim, so if the id field was analyzed as lower case keyword this would not match ids ABC or Xyz.
 * `mainTopic,subTopic:zl:tq("Lung Cancer" "Brain Cancer" Diabetes)`  
   * searches field mainTopic and subTopic for terms "Lung Cancer" "Brain Cancer" Diabetes, returning documents if either field matched any term.  In this case topics and subTopics are assumed to be keyword fields.
 * `doi:zl:tq("10.1000\/jrnl.2011-0102-a")`
@@ -295,7 +356,7 @@ Score functions allow you to modify the relevance score of matching documents us
 * `zuliaScore` - The baseline Lucene text relevance score (BM25 by default)
 * Any numeric or date field that is configured with `.sort()` in the index config
 
-Supported field types for score function variables: `NUMERIC_INT`, `NUMERIC_LONG`, `NUMERIC_FLOAT`, `NUMERIC_DOUBLE`, `DATE`
+Supported field types for score function variables: `NUMERIC_INT`, `NUMERIC_LONG`, `NUMERIC_FLOAT`, `NUMERIC_DOUBLE`, `DATE`, `BOOL`
 
 Additionally, `geodist(fieldName, latitude, longitude)` is available for `GEO_POINT` fields configured with `.sort()`. It returns the distance in **kilometers** from the given point to the document's location.
 
@@ -331,4 +392,3 @@ Expressions are compiled with Lucene's `JavascriptCompiler`, so its full default
 * For multivalued fields, the **minimum value** is used in the score function calculation.
 * Score functions are evaluated at query time for each matching document. The expression is compiled using Lucene's expression compiler.
 * Score functions work with both MUST (default) and SHOULD scored queries. See the [Java-Client]({% post_url 2022-6-13-java %}) for API usage.
-

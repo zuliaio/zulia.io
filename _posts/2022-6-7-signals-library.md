@@ -4,15 +4,13 @@ title: Signals Library
 description: Record what users do and answer usage questions from a Zulia index
 ---
 
-# Zulia Signals Library
-
 The `zulia-signals` module records what the users of an application do (searches, clicks, views, exports, edits) as signals stored in a Zulia index, and answers usage questions from that index with facet based reports. Search signals also double as a query log: what people searched for, what they were shown, and what they clicked.
 
 Signals are recorded through the regular Java client, so the only infrastructure is a Zulia index. No separate analytics store is involved.
 
 **Beta.** `zulia-signals` ships in Zulia 5.4.0 as a beta module. The API and the stored schema may change in a later 5.x release based on feedback from the first deployments. Changes will be called out in the release notes.
 
-This page describes the module as of 5.5.2. Coming from 5.5.1: `ActorActivity` is now `ActorTally<Activity>`, `SignalsIndexConfig.dimensions` and `dimension` are `indexTags` and `indexTag` (the old names still work, deprecated), and `record` also takes a `Signal.Builder`. The stored schema is unchanged.
+This page describes the module as of 5.6.1. Since 5.6.1 builder setters no longer throw. `build()` reports every failing setter in one message. Coming from 5.5.1: `ActorActivity` is now `ActorTally<Activity>`, `SignalsIndexConfig.dimensions` and `dimension` are `indexTags` and `indexTag` (the old names still work but are deprecated for removal), and `record` also takes a `Signal.Builder`. The stored schema is unchanged.
 
 ## Gradle
 ```bash
@@ -21,7 +19,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.zulia:zulia-signals:5.6.0'
+    implementation 'io.zulia:zulia-signals:5.6.1'
 }
 ```
 
@@ -30,7 +28,7 @@ dependencies {
 <dependency>
     <groupId>io.zulia</groupId>
     <artifactId>zulia-signals</artifactId>
-    <version>5.6.0</version>
+    <version>5.6.1</version>
 </dependency>
 ```
 
@@ -59,7 +57,7 @@ A `Signal` is one thing an actor did in an application. It carries:
 | `Actor.service(id)` | SERVICE | Another application calling under its own identity, such as an API key owner |
 | `Actor.system()` | SYSTEM | The platform itself: jobs, reindexes, health checks |
 
-Reports count USER by default. SERVICE is usage and counts when asked for. SYSTEM is platform load and is excluded from every report unless `includingSystem()` is called.
+Reports count every actor type except SYSTEM. `activeUsers()` with no arguments counts USER only, and `activeUsers(ActorType...)` counts the types asked for. SYSTEM is platform load and is excluded from every report unless `includingSystem()` is called.
 
 ## Actions and Targets
 
@@ -166,7 +164,7 @@ The failure policy decides what happens when Zulia is unreachable while recordin
 
 Under `LOG_AND_DROP` the writer queue holds 10,000 signals. Past that, `record` drops the signal, returns a result with `accepted() == false`, and counts the drop. `queuedSignals()` reports the queue depth. `close()` drains the queue for up to five seconds, so call it at shutdown.
 
-Under `LOG_AND_DROP` nothing about recording throws. `record(Signal.Builder)` builds inside the policy, so a signal that fails validation, a stamp that breaks it, or a tag the index schema rejects is a counted drop with `accepted() == false`, and the request path needs no try and catch of its own. A signal that never built has a null id on its result. Under `PROPAGATE` those validation errors are thrown as they are, since they are programming errors.
+Under `LOG_AND_DROP` nothing about recording a valid signal throws. A null signal or builder still throws under every policy. `record(Signal.Builder)` builds inside the policy, so a signal that fails validation, a stamp that breaks it, or a tag the index schema rejects is a counted drop with `accepted() == false`, and the request path needs no try and catch of its own. Builder setters never throw either. A null target id, a blank tag value, a negative duration, or a failure inside a `search` consumer is recorded by the builder and thrown by `build()`, so inside `record` it is a counted drop like any other validation failure. `build()` reports every failing setter in one message, and a later successful call on the same setter or tag key clears its entry. A failed `search` consumer is the exception: a later consumer or `searchId` call builds on details the failed one never added, so only `search(SearchDetails)` with the full details clears it. An `Actor`, `Target`, or `SearchDetails` the application constructs itself still throws at construction, and so does `ZuliaSearchSignals.linked` on a signal without search details. A signal that never built has a null id on its result. Under `PROPAGATE` those validation errors are thrown as they are, since they are programming errors.
 
 ```java
 signals.record(Signal.builder().app("shop").actor(actor).action(Actions.VIEW).target(Targets.PAGE, "home"));   // never throws under LOG_AND_DROP
@@ -318,7 +316,7 @@ long productsTouched = shop.distinct(Targets.DOCUMENT);                       //
 List<DimensionCount> perApp = reports.byApp(TimeRange.lastDays(30));          // the cross app rollup
 ```
 
-Each grouped report returns `DimensionCount(value, count)` rows by count descending. `by(String)` accepts an indexed keyword tag and `by(SignalField)` a built in keyword facet field. A tag that is not indexed, or is indexed as a number, throws and names the indexed keys.
+Each grouped report returns `DimensionCount(value, count)` rows by count descending. `by(String)` accepts a tag indexed as `KEYWORD_FACET`, the default for `indexTags`, and `by(SignalField)` a built in keyword facet field. A tag that is not indexed throws and names the indexed keys. A tag indexed as another kind, such as KEYWORD or LONG, throws and names its kind. A KEYWORD tag can narrow a report with `forTag` but cannot group it.
 
 SYSTEM actors are excluded from every report. To see platform load next to usage:
 
@@ -356,7 +354,7 @@ A tally runs one search per activity, so its cost does not grow with the number 
 
 ## Per Actor Tallies by Tag
 
-`tallyBy` counts signals per actor and per value of an indexed keyword tag, or of a built in keyword facet field such as the client or a time bucket. Narrow by `forActivity` first to break one activity down. Each row is an `ActorTally<String>(actorId, counts)` with one entry per value the actor has a signal for, by total descending. `tally` returns the same record as `ActorTally<Activity>`, so both tables share `count(column)` and `total()`.
+`tallyBy` counts signals per actor and per value of a tag indexed as `KEYWORD_FACET`, or of a built in keyword facet field such as the client or a time bucket. A tag that is not indexed or is indexed as another kind throws, the same as `by`. Narrow by `forActivity` first to break one activity down. Each row is an `ActorTally<String>(actorId, counts)` with one entry per value the actor has a signal for, by total descending. `tally` returns the same record as `ActorTally<Activity>`, so both tables share `count(column)` and `total()`.
 
 ```java
 UsageReport adds = shop.forActivity(Activity.of(Actions.CREATE, Targets.DATASET));
@@ -372,7 +370,7 @@ List<ActorTally<String>> perDay = adds.tallyBy(Bucket.DAY.field());          // 
 List<ActorTally<String>> perClient = shop.tallyBy(SignalField.CLIENT);       // every signal, per actor per client
 ```
 
-A tally by tag runs one search per actor or one per value, whichever there are fewer of, plus two to count them, so its cost is `2 + min(actors, values)`. It throws past `maxTallySearches` searches, 1,000 by default, naming both cardinalities, and past `maxFacetValues` actors or values. Narrow the report, raise the cap on `UsageReports`, or run a custom search for a wider table. A report narrowed by `forActor` or by `forTag` on the same tag refuses `tallyBy`, since one row or one column is a `by`. A list tag counts a signal once per element, so a row's total can exceed the actor's signals.
+A tally by tag runs one search per actor or one per value, whichever there are fewer of, plus two to count them, so its cost is `2 + min(actors, values)`. It throws past `maxTallySearches` searches, 1,000 by default, naming both cardinalities, and past `maxFacetValues` actors or values. Narrow the report, raise the cap on `UsageReports`, or run a custom search for a wider table. A report narrowed on the actor id, or on the tallied field by `forTag` or `forField`, refuses `tallyBy`, since one row or one column is a `by`. A list tag counts a signal once per element, so a row's total can exceed the actor's signals.
 
 ## Custom Queries
 

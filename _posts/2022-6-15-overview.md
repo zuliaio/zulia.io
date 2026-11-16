@@ -5,19 +5,18 @@ description: Learn more about Zulia
 image: assets/images/overview.jpg
 ---
 
-## Zulia
-### Distributed Lucene with deep object searching
+## Distributed Lucene with deep object searching
 
-Zulia is a real-time distributed search and storage system. Zulia is designed to scale both vertically and horizontally across servers.
+Zulia is a real-time distributed search and storage system. Zulia is designed to scale both vertically and horizontally across servers. 
 
-### Zulia is:
+## Zulia is:
 * Realtime
 * Distributed
 * Pure Java with [rich Java client]({% post_url 2022-6-13-java %})
 * Open Source
-* Based on Lucene 10.5.1
+* Based on Lucene 10.5.2
 
-### Zulia supports:
+## Zulia supports:
 * [Searching multiple indexes (including wildcard patterns) with a single query]({% post_url 2022-6-13-java %}#search-multiple-indexes)
 * [Storing associated files with the documents (images, pdfs, ...)]({% post_url 2022-6-13-java %}#storing-associated-documents)
 * [Sorting]({% post_url 2022-6-13-java %}#sorting)
@@ -33,7 +32,7 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * [Rich Query Syntax]({% post_url 2022-6-10-query-syntax %})
 * [Usage signals and search analytics with the Signals Library (beta)]({% post_url 2022-6-7-signals-library %})
 
-### Learn more
+## Learn more
 * [Install]({% post_url 2022-6-14-install %})
 * [Sharding and Replication]({% post_url 2022-6-13-sharding %})
 * [Command Line Client]({% post_url 2022-6-11-cli %})
@@ -45,9 +44,9 @@ Zulia is a real-time distributed search and storage system. Zulia is designed to
 * [Signals Library (beta)]({% post_url 2022-6-7-signals-library %})
 
 
-### Requirements
+## Requirements
 * Java 25
 * MongoDB (for cluster mode)
 
-### Latest Release
-* Version 5.6.0 - [Download](https://github.com/zuliaio/zuliasearch/releases)
+## Latest Release
+* Version 5.6.1 - [Download](https://github.com/zuliaio/zuliasearch/releases)

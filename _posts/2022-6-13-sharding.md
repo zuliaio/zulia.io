@@ -5,8 +5,6 @@ description: How Zulia shards and replicates indexes across the cluster
 date: 2022-06-13 12:00:00
 ---
 
-# Sharding and Replication
-
 ## Sharding
 
 Each Zulia index is split into a fixed number of shards (set with `numberOfShards` at index creation). Shards are distributed across the nodes in the cluster, allowing a single index to scale beyond one machine. Writes are routed to the shard that owns a document's unique id, and queries are federated across all shards and merged before being returned to the client.
@@ -24,7 +22,7 @@ Replicas serve queries from their local segment copies and can take over if a pr
 
 ### Changing the replica count on a live index
 
-The number of replicas is no longer fixed at index creation. It can be increased or decreased on an existing index with `UpdateIndex` (Java client) or with `zuliaadmin updateIndex --index <name> --numberOfReplicas <n>`, without recreating the index. Previously this operation threw "Cannot change replication factor for existing index yet".
+The number of replicas is not fixed at index creation. It can be increased or decreased on an existing index with `UpdateIndex` (Java client) or with `zuliaadmin updateIndex --index <name> --numberOfReplicas <n>`, without recreating the index. Live replica count changes have been supported since 4.18.0.
 
 ### Tuning replication
 
@@ -35,5 +33,4 @@ Two node-level settings in `zulia.yaml` control replication transfers (see [Inst
 
 ### Monitoring replication
 
-The `GET /replication/{indexName}` REST endpoint reports per-shard and per-replica progress: last attempted generation, replica lag, last-success timestamp, consecutive failures, and circuit-breaker state. See [Rest-Service]({% post_url 2022-6-12-rest %}#replication-rest).
-
+The `GET /replication/{indexName}` REST endpoint reports per-shard and per-replica progress: last attempted generation, replica lag, last-success timestamp, consecutive failures, and circuit-breaker state. It only reports shards whose primary is on the queried node, so check each node that holds a primary. See [Rest-Service]({% post_url 2022-6-12-rest %}#replication-rest).
